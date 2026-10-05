@@ -1,0 +1,18 @@
+name: repackage-on-ingredient-bump
+
+# spec: claude-plugins/mavergreen/skills/mavergreen-conventions/SKILL.md "Consuming a Mavergreen toolchain": drydock is
+#       the one ingredient baked in; this product is its own upstream, so no own-upstream-paths
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - components/drydock/version
+
+jobs:
+  repackage:
+    permissions:
+      actions: write
+    uses: Mavergreen/shipyard/.github/workflows/repackage-on-ingredient-bump.yml@v1
+    with:
+      dispatch-field: repackage=true
