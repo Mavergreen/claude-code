@@ -1,4 +1,14 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>Mavergreen/shipyard"]
+  "extends": ["github>Mavergreen/shipyard"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^components/drydock/version$/"],
+      "matchStrings": ["^(?<currentValue>.+?)\\s*$"],
+      "depNameTemplate": "Mavergreen/drydock",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
+    }
+  ]
 }

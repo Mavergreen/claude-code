@@ -10,6 +10,7 @@ This product is **its own upstream**: nothing external releases it.
 | MacOSX10.9 SDK, CMake modules, compat guard, packaging and signing scripts | `Mavergreen/shipyard@v1` | ✅ github-actions manager tracks the tag | `@v1` moves without the pin changing, so nothing repackages by itself |
 | Sparkle, in the updater | shipyard's `fetch_sparkle_framework.sh`, pinned by hash there | ❌ untrackable here: shipyard owns that pin | follows shipyard |
 | computer-use MCP server (`mcp_server.py`, `cu_actions.py`), vendored from Wowfunhappy | `tree/share/claude-code/computer-use/`, hashes in `PROVENANCE.md` | ❌ untrackable: vendored source with no release to watch | updated by hand from upstream until it becomes its own product |
+| drydock-macho-rewrite, the patcher the launcher runs on Claude Code | `components/drydock/version`, verified against its release's `SHA256SUMS` at package time | ✅ github-releases manager tracks `Mavergreen/drydock` | a bump repackages via the ingredient-bump workflow |
 
 Not ingredients: AVXEmu and the runtime are required at install time (`--requires`, runtime only),
 not shipped in this package. Claude Code is fetched on the user's Mac, verified, and never shipped.
@@ -17,6 +18,7 @@ not shipped in this package. Claude Code is fetched on the user's Mac, verified,
 ## Declared state
 
 - upstream: UPSTREAM_VERSION
+- drydock: components/drydock/version
 
 ## Conformance deviations
 

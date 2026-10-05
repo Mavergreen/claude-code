@@ -1,0 +1,7 @@
+fixups        set      classic
+minos         at-most  10.9
+load-command  delete   uuid
+load-command  delete   codesig
+dylib         replace  /usr/lib/libSystem.B.dylib   /usr/local/mavergreen/@RUNTIME@/lib/libSystemWrapper.dylib
+dylib         replace  /usr/lib/libicucore.A.dylib  /usr/local/mavergreen/@RUNTIME@/lib/libicucoreWrapper.dylib
+dylib         replace  /usr/lib/libc++.1.dylib      /usr/local/mavergreen/@RUNTIME@/lib/libc++.1.dylib
