@@ -1,0 +1,57 @@
+#!/bin/sh
+# platform: macOS-only -- runs Claude Code on Mac OS X 10.9
+
+_cc_s="$0"
+_cc_n=0
+while [ -L "$_cc_s" ]; do
+  _cc_n=$((_cc_n+1))
+  [ "$_cc_n" -le 40 ] || { echo "claude: too many symlinks: $0" >&2; exit 1; }
+  _cc_t="$(readlink "$_cc_s")"
+  case "$_cc_t" in
+    /*) _cc_s="$_cc_t" ;;
+    *) _cc_s="$(dirname "$_cc_s")/$_cc_t" ;;
+  esac
+done
+_cc_x="$(CDPATH= cd -P "$(dirname "$_cc_s")" && pwd -P)/../libexec/claude-code" || exit 1
+for _cc_m in lib fetch select patch takeover prune env; do
+  . "$_cc_x/$_cc_m.sh" || exit 1
+done
+
+cc_init "$0"
+
+_cc_cpu="$(PATH="${PATH:+$PATH:}${CC_SBIN:-/usr/sbin}" sysctl -n machdep.cpu.features 2>/dev/null)" || _cc_cpu=""
+case "$_cc_cpu" in
+  *[![:space:]]*) ;;
+  *) cc_die "could not read this Mac's CPU features" ;;
+esac
+case " $_cc_cpu " in
+  *" AVX1.0 "*) ;;
+  *) cc_die "this Mac's CPU lacks AVX, which Claude Code requires" ;;
+esac
+
+[ -f "$CC_TREE/share/claude-code/requires" ] || cc_die "missing $CC_TREE/share/claude-code/requires"
+while read -r _cc_short _cc_url || [ -n "$_cc_short" ]; do
+  [ -n "$_cc_short" ] || continue
+  [ -f "$CC_MG/$_cc_short/mavergreen.plist" ] || cc_die "$_cc_short is not installed; get it from $_cc_url"
+done < "$CC_TREE/share/claude-code/requires"
+
+cc_takeover || :
+cc_claim_link || :
+V=$(cc_choose) || { cc_record_intent "$@"; exit 1; }
+P=$(cc_runnable "$V") || { cc_record_intent "$@"; exit 1; }
+cc_record_intent "$@"
+if [ "$P" = "$(cc_entry "$V")" ] && [ ! -e "$CC_STATE/repick" ]; then cc_prune "$V" || :; fi
+mkdir -p "$HOME/Library/Caches" 2>/dev/null || :
+
+cc_setup_env
+
+_cc_cfg="$CC_TREE/share/claude-code"
+if [ -f "$_cc_cfg/mcp-config.json" ] && [ -x "$_cc_cfg/computer-use/mcp_server.py" ]; then
+  set -- "--mcp-config=$_cc_cfg/mcp-config.json" "$@"
+fi
+if [ -f "$_cc_cfg/settings.json" ]; then
+  set -- "--settings=$_cc_cfg/settings.json" "$@"
+fi
+set -- --allowedTools=Grep "$@"
+
+exec "$P" "$@"
