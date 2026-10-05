@@ -150,3 +150,7 @@ h_assert_eq "2.1.289" "$(cc_choose)" "a recorded install before 2.1.207 is not h
 mkv 2.1.207
 cc_record_intent install 2.1.207
 h_assert_eq "2.1.207" "$(cc_choose)" "2.1.207 itself is honoured"
+
+E2E_OLDER="$(sed -n 's/^OLDER="\${CC_E2E_OLDER_VERSION:-\(.*\)}"$/\1/p' "$H_REPO/tests/e2e/run.sh")"
+h_assert_ok cc_is_version "$E2E_OLDER"
+h_assert_fails cc_predates_launcher "$E2E_OLDER"
