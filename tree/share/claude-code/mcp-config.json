@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "computer-use-mavericks": {
+      "type": "stdio",
+      "command": "/usr/local/mavergreen/claude-code/share/claude-code/computer-use/mcp_server.py",
+      "args": [],
+      "env": {}
+    }
+  }
+}

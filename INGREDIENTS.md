@@ -9,6 +9,7 @@ This product is **its own upstream**: nothing external releases it.
 | our own source (own upstream) | `UPSTREAM_VERSION`: the date of the newest source a release carries, bumped by hand | ❌ untrackable: nothing external releases it | bumping it on `main` is the decision to release |
 | MacOSX10.9 SDK, CMake modules, compat guard, packaging and signing scripts | `Mavergreen/shipyard@v1` | ✅ github-actions manager tracks the tag | `@v1` moves without the pin changing, so nothing repackages by itself |
 | Sparkle, in the updater | shipyard's `fetch_sparkle_framework.sh`, pinned by hash there | ❌ untrackable here: shipyard owns that pin | follows shipyard |
+| computer-use MCP server (`mcp_server.py`, `cu_actions.py`), vendored from Wowfunhappy | `tree/share/claude-code/computer-use/`, hashes in `PROVENANCE.md` | ❌ untrackable: vendored source with no release to watch | updated by hand from upstream until it becomes its own product |
 
 Not ingredients: AVXEmu and the runtime are required at install time (`--requires`, runtime only),
 not shipped in this package. Claude Code is fetched on the user's Mac, verified, and never shipped.
