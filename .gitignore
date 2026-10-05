@@ -1,0 +1,5 @@
+/VERSION
+/dist/
+CMakeUserPresets.json
+/.superpowers/
+/.idea/
