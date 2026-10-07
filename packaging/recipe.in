@@ -5,3 +5,4 @@ load-command  delete   codesig
 dylib         replace  /usr/lib/libSystem.B.dylib   /usr/local/mavergreen/recaulk/lib/libRecaulkSystem.dylib
 dylib         replace  /usr/lib/libicucore.A.dylib  /usr/local/mavergreen/icu/lib/libicucore.dylib
 dylib         replace  /usr/lib/libc++.1.dylib      /usr/local/mavergreen/libcxx22/lib/libc++.1.dylib
+dylib         insert   /usr/local/mavergreen/avxemu/lib/libavxemu.dylib

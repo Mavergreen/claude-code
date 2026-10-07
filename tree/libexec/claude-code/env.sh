@@ -1,18 +1,10 @@
 #!/bin/sh
-# platform: macOS-only -- the environment Claude Code needs on Mac OS X 10.9 (avxemu on CPUs without AVX2)
+# platform: macOS-only -- the environment Claude Code needs on Mac OS X 10.9
 
 cc_setup_env() {
   JSC_numberOfGCMarkers=1
   DISABLE_INSTALLATION_CHECKS=1
   export JSC_numberOfGCMarkers DISABLE_INSTALLATION_CHECKS
-  case " $(PATH="${PATH:+$PATH:}${CC_SBIN:-/usr/sbin}" sysctl -n machdep.cpu.leaf7_features 2>/dev/null) " in
-    *" AVX2 "*) ;;
-    *) case "${DYLD_INSERT_LIBRARIES-}" in
-         "$CC_MG/avxemu/lib/libavxemu.dylib"|"$CC_MG/avxemu/lib/libavxemu.dylib":*) ;;
-         *) DYLD_INSERT_LIBRARIES="$CC_MG/avxemu/lib/libavxemu.dylib${DYLD_INSERT_LIBRARIES:+:$DYLD_INSERT_LIBRARIES}"
-            export DYLD_INSERT_LIBRARIES ;;
-       esac ;;
-  esac
   _cc_lb="$HOME/.local/bin"
   _cc_lp="$(CDPATH= cd -P "$_cc_lb" 2>/dev/null && pwd -P)" || _cc_lp=""
   _cc_have=0

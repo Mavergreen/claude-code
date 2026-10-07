@@ -117,20 +117,13 @@ arg:--mcp-config=" "order without settings"
   H_LEAF7=" SMEP BMI2 "
   unset DYLD_INSERT_LIBRARIES
   cc_setup_env
-  h_assert_eq "$AV" "$DYLD_INSERT_LIBRARIES" "avxemu inserted without AVX2"
-  cc_setup_env
-  h_assert_eq "$AV" "$DYLD_INSERT_LIBRARIES" "not prepended twice"
-  unset DYLD_INSERT_LIBRARIES
+  h_assert_eq "" "${DYLD_INSERT_LIBRARIES-}" "never inserts avxemu"
   DYLD_INSERT_LIBRARIES=/x.dylib; export DYLD_INSERT_LIBRARIES
   cc_setup_env
-  h_assert_eq "$AV:/x.dylib" "$DYLD_INSERT_LIBRARIES" "existing value kept after colon"
-  H_LEAF7=" SMEP AVX2 BMI2 "
-  unset DYLD_INSERT_LIBRARIES
+  h_assert_eq "/x.dylib" "$DYLD_INSERT_LIBRARIES" "a pre-set value is left alone"
+  DYLD_INSERT_LIBRARIES="$AV"; export DYLD_INSERT_LIBRARIES
   cc_setup_env
-  h_assert_eq "" "${DYLD_INSERT_LIBRARIES-}" "unset with AVX2"
-  DYLD_INSERT_LIBRARIES=/x.dylib; export DYLD_INSERT_LIBRARIES
-  cc_setup_env
-  h_assert_eq "/x.dylib" "$DYLD_INSERT_LIBRARIES" "AVX2 host leaves a pre-set value alone"
+  h_assert_eq "$AV" "$DYLD_INSERT_LIBRARIES" "a pre-set avxemu value is unchanged"
   unset DYLD_INSERT_LIBRARIES
   PATH=""
   cc_setup_env
@@ -144,7 +137,7 @@ arg:--mcp-config=" "order without settings"
   CC_SBIN="$H/fakesbin"
   PATH=/usr/bin:/bin
   cc_setup_env
-  h_assert_eq "" "${DYLD_INSERT_LIBRARIES-}" "a PATH without sbin still reads leaf7 (AVX2: no avxemu)"
+  h_assert_eq "" "${DYLD_INSERT_LIBRARIES-}" "cc_setup_env never inserts avxemu with PATH=/usr/bin:/bin"
   [ "$H_FAILS" -eq 0 ]
 ) || H_FAILS=$((H_FAILS+1))
 
