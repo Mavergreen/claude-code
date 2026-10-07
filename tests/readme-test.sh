@@ -15,20 +15,26 @@ section() { sed -n "/^## $1\$/,/^## /p" "$R"; }
 if grep -n -i -E 'installs[^.]*(AVX2 emulator|avxemu)' "$R"; then
   echo "FAIL: README says this package installs the AVX2 emulator" >&2; H_FAILS=$((H_FAILS+1))
 fi
-h_assert_contains "$(cat "$R")" "separate" "avxemu and the runtime are separate packages"
+h_assert_contains "$(cat "$R")" "separate" "the required products are separate packages"
 
 INS="$(section Installing)"
 h_assert_contains "$INS" "avxemu" "Installing names avxemu"
-h_assert_contains "$INS" "runtime" "Installing names the runtime"
+h_assert_contains "$INS" "recaulk" "Installing names recaulk"
+h_assert_contains "$INS" "libcxx22" "Installing names libcxx22"
+h_assert_contains "$INS" "icu" "Installing names icu"
 h_assert_contains "$INS" "new Terminal window" "Installing says to open a new Terminal window"
 h_assert_contains "$INS" "/usr/local/mavergreen/bin/claude" "Installing names the command's new path"
 h_assert_contains "$INS" "/usr/local/bin/claude" "in place of the old one"
 h_assert_ok before "## Installing" "## Pinning a version"
 _ia="$(printf '%s\n' "$INS" | grep -n -i 'avxemu' | head -n 1 | cut -d: -f1)"
-_ir="$(printf '%s\n' "$INS" | grep -n -i 'runtime' | head -n 1 | cut -d: -f1)"
+_ir="$(printf '%s\n' "$INS" | grep -n -i 'recaulk' | head -n 1 | cut -d: -f1)"
+_il="$(printf '%s\n' "$INS" | grep -n -i 'libcxx22' | head -n 1 | cut -d: -f1)"
+_ii="$(printf '%s\n' "$INS" | grep -n -i 'icu' | head -n 1 | cut -d: -f1)"
 _ic="$(printf '%s\n' "$INS" | grep -n 'Claude Code for Mavericks' | head -n 1 | cut -d: -f1)"
-h_assert_ok test "${_ia:-99}" -le "${_ir:-0}"
-h_assert_ok test "${_ir:-99}" -le "${_ic:-0}"
+h_assert_ok test "${_ia:-99}" -lt "${_ir:-0}"
+h_assert_ok test "${_ir:-99}" -lt "${_il:-0}"
+h_assert_ok test "${_il:-99}" -lt "${_ii:-0}"
+h_assert_ok test "${_ii:-99}" -lt "${_ic:-0}"
 
 PIN="$(section "Pinning a version")"
 h_assert_contains "$PIN" "DISABLE_AUTOUPDATER=1" "Pinning names the variable"

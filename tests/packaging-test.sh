@@ -4,49 +4,55 @@ set -eu
 . "$(dirname "$0")/lib/harness.sh"
 h_setup
 PK="$H_REPO/packaging"
-export RUNTIME_RELEASES_URL="https://example.invalid/fakert/releases"
+
+mkdir "$H/shipyard"
+cat > "$H/shipyard/product-name.sh" <<'STUB'
+#!/bin/sh
+[ "$1" = repo ] || { echo "unsupported: $1" >&2; exit 1; }
+case "$2" in
+  avxemu) echo avxemu ;;
+  recaulk) echo recaulk ;;
+  libcxx22) echo clang-22 ;;
+  icu) echo icu ;;
+  *) echo "unregistered: $2" >&2; exit 1 ;;
+esac
+STUB
+SHIPYARD_SCRIPTS="$H/shipyard"; export SHIPYARD_SCRIPTS
 
 printf 'drydock one\n' > "$H/dd1"
 printf 'drydock two\n' > "$H/dd2"
-mkdir "$H/out1" "$H/out2" "$H/out3"
-sh "$PK/render-recipe.sh" fakert "$H/dd1" "$H/out1"
-sh "$PK/render-recipe.sh" fakert "$H/dd2" "$H/out2"
-sh "$PK/render-recipe.sh" otherrt "$H/dd1" "$H/out3"
+mkdir "$H/out1" "$H/out2"
+sh "$PK/render-recipe.sh" "$H/dd1" "$H/out1"
+sh "$PK/render-recipe.sh" "$H/dd2" "$H/out2"
 
-h_assert_eq "0" "$(grep -c '@RUNTIME@' "$H/out1/recipe")" "no placeholder survives"
-h_assert_eq "3" "$(grep -c '/usr/local/mavergreen/fakert/lib/' "$H/out1/recipe")" "three dylib targets name the runtime"
+h_assert_eq "0" "$(grep -c '@' "$H/out1/recipe")" "no placeholder survives"
+h_assert_eq "dylib         replace  /usr/lib/libSystem.B.dylib   /usr/local/mavergreen/recaulk/lib/libRecaulkSystem.dylib" "$(grep 'libSystem.B' "$H/out1/recipe")" "libSystem replacement"
+h_assert_eq "dylib         replace  /usr/lib/libc++.1.dylib      /usr/local/mavergreen/libcxx22/lib/libc++.1.dylib" "$(grep 'libc++' "$H/out1/recipe")" "libc++ replacement"
+h_assert_eq "dylib         replace  /usr/lib/libicucore.A.dylib  /usr/local/mavergreen/icu/lib/libicucore.dylib" "$(grep 'libicucore' "$H/out1/recipe")" "libicucore replacement"
+h_assert_eq "3" "$(grep -c '^dylib ' "$H/out1/recipe")" "exactly three dylib replacements"
 h_assert_contains "$(sed -n 1p "$H/out1/recipe")" "fixups        set      classic" "recipe starts with fixups"
 h_assert_eq "$(cat "$H/out1/recipe" "$H/dd1" | shasum -a 256 | cut -d' ' -f1)" "$(cat "$H/out1/recipe-id")" "recipe-id is sha256 of recipe then binary"
 h_assert_eq "65" "$(wc -c < "$H/out1/recipe-id" | tr -d ' ')" "recipe-id is 64 hex chars and a newline"
 h_assert_ne() { [ "$1" != "$2" ] || { echo "FAIL: $3" >&2; H_FAILS=$((H_FAILS+1)); }; }
 h_assert_ne "$(cat "$H/out1/recipe-id")" "$(cat "$H/out2/recipe-id")" "recipe-id changes with the binary"
-h_assert_ne "$(cat "$H/out1/recipe-id")" "$(cat "$H/out3/recipe-id")" "recipe-id changes with the recipe"
-h_assert_eq "2" "$(wc -l < "$H/out1/requires" | tr -d ' ')" "requires has two lines"
-h_assert_eq "avxemu https://github.com/Mavergreen/avxemu/releases" "$(sed -n 1p "$H/out1/requires")" "avxemu line"
-h_assert_eq "fakert https://example.invalid/fakert/releases" "$(sed -n 2p "$H/out1/requires")" "runtime line"
-rc=0; out="$(sh "$PK/render-recipe.sh" fakert "$H/dd1" 2>&1)" || rc=$?
+h_assert_eq "4" "$(wc -l < "$H/out1/requires" | tr -d ' ')" "requires has four lines"
+h_assert_eq "avxemu https://github.com/Mavergreen/avxemu/releases/latest" "$(sed -n 1p "$H/out1/requires")" "avxemu line"
+h_assert_eq "recaulk https://github.com/Mavergreen/recaulk/releases/latest" "$(sed -n 2p "$H/out1/requires")" "recaulk line"
+h_assert_eq "libcxx22 https://github.com/Mavergreen/clang-22/releases/latest" "$(sed -n 3p "$H/out1/requires")" "libcxx22 line"
+h_assert_eq "icu https://github.com/Mavergreen/icu/releases/latest" "$(sed -n 4p "$H/out1/requires")" "icu line"
+rc=0; out="$(sh "$PK/render-recipe.sh" "$H/dd1" 2>&1)" || rc=$?
 h_assert_eq "2" "$rc" "wrong argument count exits 2"
 h_assert_contains "$out" "usage:" "wrong argument count prints usage"
-rc=0; out="$(sh "$PK/render-recipe.sh" 'bad/name' "$H/dd1" "$H/out1" 2>&1)" || rc=$?
-h_assert_eq "2" "$rc" "invalid runtime name exits 2"
-h_assert_contains "$out" "invalid runtime name" "invalid runtime name message"
 
-mkdir "$H/shipyard" "$H/out4" "$H/out5"
-cat > "$H/shipyard/product-name.sh" <<'STUB'
+mkdir "$H/shipyard2" "$H/out5"
+cat > "$H/shipyard2/product-name.sh" <<'STUB'
 #!/bin/sh
-[ "$1 $2" = "repo fakert" ] || { echo "unregistered: $2" >&2; exit 1; }
-echo mavericks-fakert-repo
+[ "$2" = avxemu ] || { echo "unregistered: $2" >&2; exit 1; }
+echo avxemu
 STUB
-(
-  unset RUNTIME_RELEASES_URL
-  SHIPYARD_SCRIPTS="$H/shipyard"; export SHIPYARD_SCRIPTS
-  sh "$PK/render-recipe.sh" fakert "$H/dd1" "$H/out4"
-  rc=0; out="$(sh "$PK/render-recipe.sh" unknownrt "$H/dd1" "$H/out5" 2>&1)" || rc=$?
-  echo "$rc" > "$H/rc5"; echo "$out" > "$H/msg5"
-)
-h_assert_eq "fakert https://github.com/Mavergreen/mavericks-fakert-repo/releases" "$(sed -n 2p "$H/out4/requires")" "runtime url from product-name.sh"
-h_assert_ne "0" "$(cat "$H/rc5")" "unregistered runtime fails"
-h_assert_contains "$(cat "$H/msg5")" "unregistered" "unregistered runtime says why"
+rc=0; out="$(SHIPYARD_SCRIPTS="$H/shipyard2" sh "$PK/render-recipe.sh" "$H/dd1" "$H/out5" 2>&1)" || rc=$?
+h_assert_ne "0" "$rc" "an unregistered product fails"
+h_assert_contains "$out" "unregistered" "an unregistered product says why"
 
 url() { printf 'file://%s' "$(printf %s "$1" | sed "s/%/%25/g; s/ /%20/g; s/#/%23/g; s/?/%3F/g")"; }
 rel="$H/rel/v0.1.0"

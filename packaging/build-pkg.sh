@@ -3,7 +3,6 @@
 #   usage: build-pkg.sh BUILD-DIR VERSION OUT.pkg
 #          Stages tree/, the pinned drydock, the rendered recipe, the docs and the updater under
 #          /usr/local/mavergreen/claude-code, and wraps them in a 10.9.5-floored product archive.
-#          The runtime product's short name is the first line of RUNTIME_PRODUCT.
 set -eu
 B=${1:?usage: build-pkg.sh BUILD-DIR VERSION OUT.pkg}
 V=${2:?usage: build-pkg.sh BUILD-DIR VERSION OUT.pkg}
@@ -11,9 +10,6 @@ OUT=${3:?usage: build-pkg.sh BUILD-DIR VERSION OUT.pkg}
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 . "$REPO/build/msc.sh"
 SHIPYARD=$SHIPYARD_SCRIPTS
-[ -f "$REPO/RUNTIME_PRODUCT" ] || { echo "build-pkg: no $REPO/RUNTIME_PRODUCT; it names the runtime product's short name" >&2; exit 1; }
-RT=$(sed -n 1p "$REPO/RUNTIME_PRODUCT")
-[ -n "$RT" ] || { echo "build-pkg: $REPO/RUNTIME_PRODUCT is empty" >&2; exit 1; }
 [ -d "$B/claude-code-updater.app" ] || { echo "build-pkg: no updater; configure with -DCLAUDE_CODE_BUILD_UPDATER=ON" >&2; exit 1; }
 work=$(mktemp -d "${TMPDIR:-/tmp}/claude-code-pkg.XXXXXX")
 trap 'rm -rf "$work"' EXIT
@@ -29,11 +25,11 @@ else
   cp -Rp "$REPO/tree/." "$T/"
 fi
 sh "$REPO/packaging/fetch-drydock.sh" "$(cat "$REPO/components/drydock/version")" "$T/libexec"
-sh "$REPO/packaging/render-recipe.sh" "$RT" "$T/libexec/drydock-macho-rewrite" "$T/share/claude-code"
+sh "$REPO/packaging/render-recipe.sh" "$T/libexec/drydock-macho-rewrite" "$T/share/claude-code"
 cp "$REPO/LICENSE" "$REPO/README.md" "$T/share/doc/claude-code/"
 find "$ROOT" -name '._*' -delete
 sh "$SHIPYARD/stage_product.sh" --stage "$ROOT" --product claude-code --name "Mavericks Claude Code" \
-  --version "$V" --requires avxemu --requires "$RT" \
+  --version "$V" --requires avxemu --requires recaulk --requires libcxx22 --requires icu \
   --preinstall-hook "$REPO/packaging/preinstall-hook.sh" --postinstall-hook "$REPO/packaging/postinstall-hook.sh" \
   --scripts-out "$work/scripts" --updater-app "$B/claude-code-updater.app"
 sh "$SHIPYARD/build_component_pkg.sh" --root "$ROOT" --identifier dev.mavergreen.claude-code \

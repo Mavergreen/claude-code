@@ -4,15 +4,17 @@
 
 Claude Code for Mavericks runs Anthropic's Claude Code on Mac OS X 10.9, including on Macs without AVX2. It installs a launcher, the Mavericks fixes and the tool that applies them. Claude Code itself is never part of the package: the launcher downloads it from Anthropic on your Mac, checks it against Anthropic's published checksum, and patches a copy there.
 
-Two more pieces come as separate packages, installed first: avxemu, which emulates AVX2 on Macs that lack it, and the runtime, which supplies the system libraries Claude Code needs that 10.9 lacks. The Claude Code for Mavericks installer refuses to run without them, and says where to get whichever is missing.
+Four more pieces come as separate packages, installed first: avxemu, which emulates AVX2 on Macs that lack it, and three runtime products (recaulk, libcxx22 and icu), which supply the system libraries Claude Code needs that 10.9 lacks. The Claude Code for Mavericks installer refuses to run without them, and says where to get whichever is missing.
 
 This project is not affiliated with, endorsed by, or sponsored by Anthropic. Claude and Claude Code are trademarks of Anthropic.
 
 ## Installing
 
 1. Install avxemu.
-2. Install the runtime.
-3. Install Claude Code for Mavericks.
+2. Install recaulk.
+3. Install libcxx22.
+4. Install icu.
+5. Install Claude Code for Mavericks.
 
 Then open a new Terminal window, so that your shell finds the new `claude`, and run `claude`. The first run downloads Claude Code, which takes a minute.
 
