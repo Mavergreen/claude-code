@@ -12,14 +12,21 @@ mkdir -p "$H/work" "$H/tmp" "$H/my env"
 h_assert_ok test -f "$E"
 for f in mktemp timeout env; do h_assert_ok test -x "$SB/$f"; done
 
-under_tmp() { case "$1" in "$H/tmp/"*) echo yes ;; *) echo no ;; esac; }
+_probe="$(TMPDIR="$H/tmp/" /usr/bin/mktemp -t probe)"
+REFDIR="$(cd "$(dirname "$_probe")" && pwd -P)"
+rm -f "$_probe"
+under_tmp() {
+  case "$1" in /*) ;; *) echo no; return ;; esac
+  _ud="$(cd "$(dirname "$1")" 2>/dev/null && pwd -P)" || _ud=
+  if [ "$_ud" = "$REFDIR" ]; then echo yes; else echo no; fi
+}
 M="$SB/mktemp"
 for args in "-d" "" "-q" "-dq" "-d -q" "-u"; do
   rc=0
   # shellcheck disable=SC2086
   out="$(TMPDIR="$H/tmp/" "$M" $args 2>&1)" || rc=$?
   h_assert_eq "0" "$rc" "mktemp ${args:-(no args)} succeeds with no template"
-  h_assert_eq "yes" "$(under_tmp "$out")" "mktemp ${args:-(no args)} gives a path under TMPDIR: $out"
+  h_assert_eq "yes" "$(under_tmp "$out")" "mktemp ${args:-(no args)} gives a path in the directory the host mktemp -t picks: $out"
   case "$(basename "$out")" in tmp.*) n=yes ;; *) n=no ;; esac
   h_assert_eq "yes" "$n" "mktemp ${args:-(no args)} names it tmp.*, as modern macOS does: $out"
 done
