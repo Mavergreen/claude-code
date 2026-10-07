@@ -1,10 +1,25 @@
 # Provenance
 
-Claude Code for Mavericks replaces Wowfunhappy's Mavericks Forever installer and wrapper
-(`https://mavericksforever.com/claude/install.sh`, `MF_GEN=3`).
+Claude Code for Mavericks grew out of Wowfunhappy's Mavericks Forever
+(`https://mavericksforever.com/claude/`, `MF_GEN=3`), with his blessing. His work is CC0.
 
-The computer-use component is Wowfunhappy's (CC0). It is vendored under
-`share/claude-code/computer-use/`; it was downloaded on 2026-10-05 from
+| From Mavericks Forever | Where it is now | How it changed |
+|---|---|---|
+| `install.sh`, and the `/usr/local/bin/claude` wrapper it writes | this repo: `packaging/install.sh` and `tree/bin/claude` | rewritten; his is committed verbatim first (author Wowfunhappy), then replaced. His refusal messages are kept word for word, and the launcher keeps the wrapper's environment, injected options and config-file shapes |
+| computer-use MCP server (`mcp_server.py`, `cu_actions.py`) | this repo: `tree/share/claude-code/computer-use/` | one host-declaration line per file (below) |
+| `patch_macho`, `add_version_min`, `change_dylib`, and the patch they apply to Claude Code | `drydock-macho-rewrite` (Mavergreen/drydock), driven by `packaging/recipe.in` | reproduced; on Claude Code 2.1.292 the two outputs have identical code, data and linker tables |
+| `libavxemu.dylib` | Mavergreen/avxemu | his project, now maintained there |
+| `libSystemWrapper.dylib`, `libc++.1.dylib`, `libc++abi.1.dylib`, `libicucoreWrapper.dylib` | Mavergreen/recaulk (with his shims' function bodies verbatim), Mavergreen/clang-22's libcxx22, Mavergreen/icu | rebuilt from source; each repo's own provenance has the details |
+
+## install.sh
+
+Downloaded on 2026-10-07 from `https://mavericksforever.com/claude/install.sh`, SHA-256
+`5d9f01badd7d9d93c29814fc43c2ceff6ca2921724c8db7be08def944a2c95f2`. Its header reads "Written by
+Claude. Human assistance provided by Wowfunhappy."
+
+## computer-use
+
+Vendored under `share/claude-code/computer-use/`; downloaded on 2026-10-05 from
 `https://mavericksforever.com/claude/computer-use/`.
 
 | File | Upstream SHA-256 | SHA-256 as committed |
