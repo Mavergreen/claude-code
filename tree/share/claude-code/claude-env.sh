@@ -26,6 +26,8 @@ __cc_cd_guard() {
 cd() { __cc_cd_guard cd "$@"; builtin cd "$@"; }
 pushd() { __cc_cd_guard pushd "$@"; builtin pushd "$@"; }
 
+if [ -n "${ZSH_VERSION-}" ]; then setopt SH_WORD_SPLIT NO_NOMATCH KSH_TYPESET; fi
+
 if [ -z "${__cc_chaining-}" ] && [ -n "${MAVERGREEN_USER_CLAUDE_ENV_FILE-}" ] && [ -f "$MAVERGREEN_USER_CLAUDE_ENV_FILE" ] && [ -r "$MAVERGREEN_USER_CLAUDE_ENV_FILE" ]; then
   __cc_chaining=1
   . "$MAVERGREEN_USER_CLAUDE_ENV_FILE"

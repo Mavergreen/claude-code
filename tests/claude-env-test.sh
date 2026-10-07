@@ -253,7 +253,7 @@ printf "alias pushd=z\n" > "$H/snap-zsh-pushd"
 printf ':\n' > "$H/snap-plain"
 printf 'setopt WARN_CREATE_GLOBAL\n' > "$H/snap-zsh-warn"
 cshells=""
-for s in /bin/bash /bin/zsh; do [ ! -x "$s" ] || cshells="$cshells $s"; done
+for s in /bin/bash /bin/zsh /opt/pkg/bin/zsh; do [ ! -x "$s" ] || cshells="$cshells $s"; done
 for sh in $cshells; do
   case "$sh" in *zsh) snaps="snap-zsh-both snap-zsh-pushd" ;; *) snaps="snap-bash-both snap-bash-pushd" ;; esac
   for form in shape dotted; do
@@ -279,6 +279,19 @@ for sh in $cshells; do
       *zsh)
         out="$($form "$sh" "$E" "$H/snap-zsh-warn" "cd /usr && pushd /bin >/dev/null && pwd")" || :
         h_assert_eq "/bin" "$out" "[$sh $form] cd and pushd print nothing extra under the snapshot's WARN_CREATE_GLOBAL"
+        ;;
+    esac
+    out="$($form "$sh" "$E" "$H/snap-plain" 'a="x y"; for i in $a; do echo "[$i]"; done')" || :
+    h_assert_eq "[x]$NL[y]" "$out" "[$sh $form] an unquoted variable splits into words, as in bash"
+    out="$($form "$sh" "$E" "$H/snap-plain" 'for g in /nonexistent-cc-test/*; do echo "[$g]"; done; echo after')" || :
+    h_assert_eq "[/nonexistent-cc-test/*]${NL}after" "$out" "[$sh $form] an unmatched pattern reaches the command literally and the command goes on"
+    out="$($form "$sh" "$E" "$H/snap-plain" 'f() { local v=$1; echo "[$v]"; }; f "p q"; v="r s"; export X=$v; echo "[$X]"')" || :
+    h_assert_eq "[p q]${NL}[r s]" "$out" "[$sh $form] assignments to local and export keep their value whole"
+    case "$sh" in
+      *zsh)
+        printf 'unsetopt SH_WORD_SPLIT\n' > "$H/my env/nosplit.sh"
+        out="$($form "$sh" "$E" "$H/snap-plain" 'a="x y"; for i in $a; do echo "[$i]"; done' "$H/my env/nosplit.sh")" || :
+        h_assert_eq "[x y]" "$out" "[$sh $form] the user's env file can turn SH_WORD_SPLIT back off"
         ;;
     esac
     rm -f "$H/my env/count"
