@@ -55,32 +55,42 @@ h_assert_ne "0" "$rc" "an unregistered product fails"
 h_assert_contains "$out" "unregistered" "an unregistered product says why"
 
 url() { printf 'file://%s' "$(printf %s "$1" | sed "s/%/%25/g; s/ /%20/g; s/#/%23/g; s/?/%3F/g")"; }
+command -v pkgbuild >/dev/null 2>&1 && command -v productbuild >/dev/null 2>&1 && command -v pkgutil >/dev/null 2>&1 || exit 77
 rel="$H/rel/v0.1.0"
 mkdir -p "$rel"
-printf 'binary bytes\n' > "$rel/drydock-macho-rewrite"
-good="$(shasum -a 256 "$rel/drydock-macho-rewrite" | cut -d' ' -f1)"
+comp() { pkgbuild --root "$H/$1" --identifier "$2" --version 1 --install-location / "$H/$3" >/dev/null 2>&1; }
+mkdir -p "$H/pbase/usr/local/mavergreen/base" "$H/pdd/usr/local/mavergreen/drydock/bin" "$H/pother/usr/local/mavergreen/other"
+: > "$H/pbase/usr/local/mavergreen/base/file"
+: > "$H/pother/usr/local/mavergreen/other/file"
+printf 'binary bytes\n' > "$H/pdd/usr/local/mavergreen/drydock/bin/drydock-macho-rewrite"
+comp pbase dev.mavergreen.base pbase.pkg
+comp pdd dev.mavergreen.drydock pdd.pkg
+comp pother dev.mavergreen.other pother.pkg
+productbuild --package "$H/pbase.pkg" --package "$H/pdd.pkg" "$rel/drydock-0.1.0.pkg" >/dev/null 2>&1
+good="$(shasum -a 256 "$rel/drydock-0.1.0.pkg" | cut -d' ' -f1)"
 export DRYDOCK_RELEASES="$(url "$H/rel")"
 
-printf '%s  drydock-macho-rewrite\n' "$good" > "$rel/SHA256SUMS"
+printf '%s  drydock-0.1.0.pkg\n' "$good" > "$rel/SHA256SUMS"
 mkdir "$H/f1"
 h_assert_ok sh "$PK/fetch-drydock.sh" 0.1.0 "$H/f1"
 h_assert_ok test -x "$H/f1/drydock-macho-rewrite"
 h_assert_eq "binary bytes" "$(cat "$H/f1/drydock-macho-rewrite")" "fetched bytes"
+h_assert_eq "drydock-macho-rewrite" "$(ls -A "$H/f1")" "OUTDIR holds exactly the binary"
 
-printf '%064d  drydock-macho-rewrite\n' 0 > "$rel/SHA256SUMS"
+printf '%064d  drydock-0.1.0.pkg\n' 0 > "$rel/SHA256SUMS"
 mkdir "$H/f2"
 rc=0; out="$(sh "$PK/fetch-drydock.sh" 0.1.0 "$H/f2" 2>&1)" || rc=$?
 h_assert_eq "1" "$rc" "wrong digest fails"
 h_assert_contains "$out" "does not match" "mismatch message"
 h_assert_eq "" "$(ls -A "$H/f2")" "nothing left in OUTDIR after a mismatch"
 
-printf '%s  drydock-macho-rewrite-compat.sh\n' "$good" > "$rel/SHA256SUMS"
+printf '%s  drydock-0.1.0.pkg.sig\n' "$good" > "$rel/SHA256SUMS"
 mkdir "$H/f4"
 rc=0; out="$(sh "$PK/fetch-drydock.sh" 0.1.0 "$H/f4" 2>&1)" || rc=$?
 h_assert_eq "1" "$rc" "near-miss name fails"
 h_assert_contains "$out" "not listed" "near-miss name is not listed"
 
-printf '%s *drydock-macho-rewrite\n' "$good" > "$rel/SHA256SUMS"
+printf '%s *drydock-0.1.0.pkg\n' "$good" > "$rel/SHA256SUMS"
 mkdir "$H/f5"
 h_assert_ok sh "$PK/fetch-drydock.sh" 0.1.0 "$H/f5"
 
@@ -90,6 +100,14 @@ rc=0; out="$(sh "$PK/fetch-drydock.sh" 0.1.0 "$H/f3" 2>&1)" || rc=$?
 h_assert_eq "1" "$rc" "unlisted asset fails"
 h_assert_contains "$out" "not listed" "unlisted message"
 h_assert_eq "" "$(ls -A "$H/f3")" "nothing left in OUTDIR when unlisted"
+
+productbuild --package "$H/pbase.pkg" --package "$H/pother.pkg" "$rel/drydock-0.1.0.pkg" >/dev/null 2>&1
+printf '%s  drydock-0.1.0.pkg\n' "$(shasum -a 256 "$rel/drydock-0.1.0.pkg" | cut -d' ' -f1)" > "$rel/SHA256SUMS"
+mkdir "$H/f6"
+rc=0; out="$(sh "$PK/fetch-drydock.sh" 0.1.0 "$H/f6" 2>&1)" || rc=$?
+h_assert_eq "1" "$rc" "a pkg without the drydock component fails"
+h_assert_contains "$out" "dev.mavergreen.drydock" "the failure names the identifier"
+h_assert_eq "" "$(ls -A "$H/f6")" "nothing left in OUTDIR without the component"
 
 if [ -x /usr/bin/python2.7 ]; then PY=/usr/bin/python2.7
 elif command -v python3 >/dev/null 2>&1; then PY=python3

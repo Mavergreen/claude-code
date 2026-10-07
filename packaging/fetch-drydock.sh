@@ -1,11 +1,14 @@
 #!/bin/sh
 # platform: macOS-only -- fetches with curl and verifies with shasum, as 10.9 and the CI Macs provide
 #   usage: fetch-drydock.sh VERSION OUTDIR
-#          DRYDOCK_RELEASES overrides the base URL that holds VERSION/drydock-macho-rewrite and VERSION/SHA256SUMS.
+#          DRYDOCK_RELEASES overrides the base URL that holds vVERSION/drydock-VERSION.pkg and vVERSION/SHA256SUMS;
+#          the binary is extracted from the pkg's dev.mavergreen.drydock component.
 set -eu
 [ $# -eq 2 ] || { echo "usage: fetch-drydock.sh VERSION OUTDIR" >&2; exit 2; }
 ver="$1"; out="$2"
-asset=drydock-macho-rewrite
+asset="drydock-$ver.pkg"
+bin=drydock-macho-rewrite
+id=dev.mavergreen.drydock
 base="${DRYDOCK_RELEASES:-https://github.com/Mavergreen/drydock/releases/download}/v$ver"
 [ -d "$out" ] || { echo "no such directory: $out" >&2; exit 1; }
 tmp="$(mktemp -d "$out/.fetch.XXXXXX")"
@@ -16,5 +19,9 @@ want="$(awk -v a="$asset" '$2 == a || $2 == "*" a { print $1; exit }' "$tmp/SHA2
 [ -n "$want" ] || { echo "$asset is not listed in $base/SHA256SUMS" >&2; exit 1; }
 got="$(shasum -a 256 "$tmp/$asset" | cut -d' ' -f1)"
 [ "$got" = "$want" ] || { echo "$asset does not match $base/SHA256SUMS (wanted $want, got $got)" >&2; exit 1; }
-chmod +x "$tmp/$asset"
-mv -f "$tmp/$asset" "$out/$asset"
+mkdir "$tmp/root"
+sh "$(dirname "$0")/extract-component.sh" "$tmp/$asset" "$id" "$tmp/root"
+src="$tmp/root/usr/local/mavergreen/drydock/bin/$bin"
+[ -f "$src" ] || { echo "$asset component $id has no usr/local/mavergreen/drydock/bin/$bin" >&2; exit 1; }
+chmod +x "$src"
+mv -f "$src" "$out/$bin"

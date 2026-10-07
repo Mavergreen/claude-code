@@ -12,16 +12,9 @@ pkg="$1"; dd="$2"
 work="$(mktemp -d "${TMPDIR:-/tmp}/verify-pkg.XXXXXX")"
 trap 'rm -rf "$work"' EXIT
 id=dev.mavergreen.claude-code
-pkgutil --expand "$pkg" "$work/x"
-comp=""
-for info in $(find "$work/x" -name PackageInfo); do
-  if grep -q "identifier=\"$id\"" "$info"; then comp="$(dirname "$info")"; break; fi
-done
-[ -n "$comp" ] || { echo "verify-pkg: $pkg has no component $id" >&2; exit 1; }
-[ -f "$comp/Payload" ] || { echo "verify-pkg: component $id has no payload" >&2; exit 1; }
 root="$work/root"
 mkdir "$root"
-(cd "$root" && gzip -dc < "$comp/Payload" | cpio -idm 2>/dev/null)
+sh "$(dirname "$0")/extract-component.sh" "$pkg" "$id" "$root"
 t="$root/usr/local/mavergreen/claude-code"
 need() { [ -e "$1" ] || { echo "verify-pkg: payload lacks ${1#"$root"/}" >&2; exit 1; }; }
 needx() { need "$1"; [ -x "$1" ] || { echo "verify-pkg: ${1#"$root"/} is not executable" >&2; exit 1; }; }
