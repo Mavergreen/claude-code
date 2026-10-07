@@ -8,7 +8,7 @@ VP="$H_REPO/packaging/verify-pkg.sh"
 mk() {
   r="$H/$1"
   t="$r/usr/local/mavergreen/claude-code"
-  mkdir -p "$t/bin" "$t/libexec/mavergreen" "$t/share/claude-code/computer-use" "$r/Library/Application Support/Mavergreen/claude-code-updater.app"
+  mkdir -p "$t/bin" "$t/libexec/mavergreen" "$t/libexec/claude-code/shell-bin" "$t/share/claude-code/computer-use" "$r/Library/Application Support/Mavergreen/claude-code-updater.app"
   printf '#!/bin/sh\n' > "$t/bin/claude"; chmod +x "$t/bin/claude"
   printf 'drydock\n' > "$t/libexec/drydock-macho-rewrite"
   printf '#!/bin/sh\n' > "$t/libexec/mavergreen/pre-uninstall"
@@ -16,6 +16,8 @@ mk() {
   cat "$t/share/claude-code/recipe" "$t/libexec/drydock-macho-rewrite" | shasum -a 256 | cut -d' ' -f1 > "$t/share/claude-code/recipe-id"
   : > "$t/share/claude-code/requires"; : > "$t/share/claude-code/settings.json"; : > "$t/share/claude-code/mcp-config.json"
   printf '#!/usr/bin/python\n' > "$t/share/claude-code/computer-use/mcp_server.py"; chmod +x "$t/share/claude-code/computer-use/mcp_server.py"
+  : > "$t/share/claude-code/claude-env.sh"
+  for _f in mktemp timeout env; do printf '#!/bin/sh\n' > "$t/libexec/claude-code/shell-bin/$_f"; chmod +x "$t/libexec/claude-code/shell-bin/$_f"; done
   : > "$r/Library/Application Support/Mavergreen/claude-code-updater.app/Info.plist"
 }
 comp() { pkgbuild --root "$H/$1" --identifier "$2" --version 1 --install-location / "$H/$3" >/dev/null 2>&1; }
@@ -27,6 +29,20 @@ mk bad; rm "$H/bad/usr/local/mavergreen/claude-code/bin/claude"; build bad
 rc=0; out="$(sh "$VP" "$H/bad.pkg" "$H/dd" 2>&1)" || rc=$?
 h_assert_eq "1" "$rc" "a payload without bin/claude fails"
 h_assert_contains "$out" "bin/claude" "the failure names the missing file"
+mk noenvfile; rm "$H/noenvfile/usr/local/mavergreen/claude-code/share/claude-code/claude-env.sh"; build noenvfile
+rc=0; out="$(sh "$VP" "$H/noenvfile.pkg" "$H/dd" 2>&1)" || rc=$?
+h_assert_eq "1" "$rc" "a payload without claude-env.sh fails"
+h_assert_contains "$out" "share/claude-code/claude-env.sh" "the failure names the env file"
+for f in mktemp timeout env; do
+  mk "no$f"; rm "$H/no$f/usr/local/mavergreen/claude-code/libexec/claude-code/shell-bin/$f"; build "no$f"
+  rc=0; out="$(sh "$VP" "$H/no$f.pkg" "$H/dd" 2>&1)" || rc=$?
+  h_assert_eq "1" "$rc" "a payload without shell-bin/$f fails"
+  h_assert_contains "$out" "libexec/claude-code/shell-bin/$f" "the failure names shell-bin/$f"
+done
+mk noxenv; chmod -x "$H/noxenv/usr/local/mavergreen/claude-code/libexec/claude-code/shell-bin/env"; build noxenv
+rc=0; out="$(sh "$VP" "$H/noxenv.pkg" "$H/dd" 2>&1)" || rc=$?
+h_assert_eq "1" "$rc" "a payload whose shell-bin/env is not executable fails"
+h_assert_contains "$out" "shell-bin/env is not executable" "the failure says so"
 printf 'other\n' > "$H/dd2"
 rc=0; out="$(sh "$VP" "$H/good.pkg" "$H/dd2" 2>&1)" || rc=$?
 h_assert_eq "1" "$rc" "a different drydock fails"

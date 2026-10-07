@@ -1,0 +1,11 @@
+#!/bin/sh
+# platform: macOS-only -- Mac OS X 10.9's mktemp fails without a template, where 10.11 and later default to -t tmp
+for _cc_a in "$@"; do
+  case "$_cc_a" in
+    --) exec /usr/bin/mktemp "$@" ;;
+    -*t*) exec /usr/bin/mktemp "$@" ;;
+    -*) ;;
+    *) exec /usr/bin/mktemp "$@" ;;
+  esac
+done
+exec /usr/bin/mktemp "$@" -t tmp

@@ -1,0 +1,81 @@
+#!/usr/bin/perl
+# platform: macOS-only -- GNU timeout for Mac OS X 10.9, which has none, in its perl 5.16
+#   usage: timeout [-s SIG] [-k DURATION] [--preserve-status] [--foreground] DURATION COMMAND [ARG]...
+#          DURATION is a number, fractions allowed, with an optional s/m/h/d suffix; 0 disables the
+#          timeout. Exits as GNU's does: 124 if the command timed out (128+9 if it was sent KILL, by
+#          -s or -k), unless --preserve-status; 125 if timeout itself failed; 126 if COMMAND cannot
+#          run; 127 if it is not found; otherwise the command's own status (128+N if signal N killed it).
+use strict;
+use warnings;
+use POSIX ();
+use Time::HiRes ();
+
+sub usage { print STDERR "timeout: $_[0]\nusage: timeout [-s SIG] [-k DURATION] [--preserve-status] [--foreground] DURATION COMMAND [ARG]...\n"; exit 125 }
+
+sub seconds {
+    my ($d) = @_;
+    defined $d && $d =~ /^(\d+(?:\.\d*)?|\.\d+)([smhd]?)$/ or usage("invalid duration '" . (defined $d ? $d : '') . "'");
+    return $1 * { '' => 1, s => 1, m => 60, h => 3600, d => 86400 }->{$2};
+}
+
+sub signum {
+    my ($s) = @_;
+    return $s if $s =~ /^\d+$/;
+    $s =~ s/^SIG//i;
+    my $n = eval { no strict 'refs'; &{"POSIX::SIG\U$s"}() };
+    defined $n or usage("invalid signal '$_[0]'");
+    return $n;
+}
+
+my ($sig, $kill_after, $preserve, $foreground) = (POSIX::SIGTERM(), undef, 0, 0);
+while (@ARGV && $ARGV[0] =~ /^-/) {
+    my $a = shift @ARGV;
+    if    ($a eq '--')                  { last }
+    elsif ($a eq '--preserve-status')   { $preserve = 1 }
+    elsif ($a eq '--foreground')        { $foreground = 1 }
+    elsif ($a eq '-v' || $a eq '--verbose') { }
+    elsif ($a =~ /^(?:-s|--signal)$/)   { $sig = signum(shift @ARGV // usage('-s needs a signal')) }
+    elsif ($a =~ /^--signal=(.*)$/)     { $sig = signum($1) }
+    elsif ($a =~ /^-s(.+)$/)            { $sig = signum($1) }
+    elsif ($a =~ /^(?:-k|--kill-after)$/) { $kill_after = seconds(shift @ARGV) }
+    elsif ($a =~ /^--kill-after=(.*)$/) { $kill_after = seconds($1) }
+    elsif ($a =~ /^-k(.+)$/)            { $kill_after = seconds($1) }
+    else                                { usage("unknown option '$a'") }
+}
+my $limit = seconds(shift @ARGV);
+@ARGV or usage('missing command');
+
+my $pid = fork;
+defined $pid or usage("fork failed: $!");
+if (!$pid) {
+    POSIX::setpgid(0, 0) unless $foreground;
+    exec { $ARGV[0] } @ARGV or do {
+        print STDERR "timeout: failed to run command '$ARGV[0]': $!\n";
+        POSIX::_exit($!{ENOENT} ? 127 : 126);
+    };
+}
+my $target = $foreground ? $pid : -$pid;
+my ($timed_out, $killed) = (0, 0);
+for my $s (qw(INT TERM HUP QUIT)) {
+    $SIG{$s} = sub { kill $s, $target };
+}
+$SIG{ALRM} = sub {
+    $timed_out = 1;
+    kill $sig, $target;
+    kill 'CONT', $target;
+    if (defined $kill_after && $kill_after > 0) {
+        $SIG{ALRM} = sub { $killed = 1; kill 'KILL', $target };
+        Time::HiRes::alarm($kill_after);
+    }
+};
+Time::HiRes::alarm($limit) if $limit > 0;
+
+my $r;
+do { $r = waitpid($pid, 0) } while ($r == -1 && $!{EINTR});
+Time::HiRes::alarm(0);
+my $st = $?;
+my $status = POSIX::WIFSIGNALED($st) ? 128 + POSIX::WTERMSIG($st) : POSIX::WEXITSTATUS($st);
+if ($timed_out && !$preserve) {
+    exit(($killed || $sig == POSIX::SIGKILL()) ? 128 + 9 : 124);
+}
+exit $status;

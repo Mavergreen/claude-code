@@ -1,0 +1,20 @@
+#!/bin/sh
+# platform: macOS-only -- Mac OS X 10.9's env has no -u
+__cc_i=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -u|--unset)
+      [ "$#" -ge 2 ] || { echo "env: option requires an argument -- 'u'" >&2; exit 125; }
+      __cc_u=$2; shift 2 ;;
+    --unset=*) __cc_u=${1#--unset=}; shift ;;
+    -u*) __cc_u=${1#-u}; shift ;;
+    -i|-) __cc_i=1; shift; continue ;;
+    *) break ;;
+  esac
+  case "$__cc_u" in
+    ''|[0-9]*|*[!A-Za-z0-9_]*) echo "env: cannot unset '$__cc_u': Invalid argument" >&2; exit 125 ;;
+  esac
+  unset "$__cc_u"
+done
+unset __cc_u
+exec /usr/bin/env ${__cc_i:+-i} "$@"

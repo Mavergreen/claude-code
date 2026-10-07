@@ -12,7 +12,7 @@ h_fake_drydock
 h_cdn_publish 2.1.289
 h_cdn_latest 2.1.289
 export DISABLE_AUTOUPDATER=1
-unset USE_BUILTIN_RIPGREP CLAUDE_ENV_FILE DYLD_INSERT_LIBRARIES 2>/dev/null || :
+unset USE_BUILTIN_RIPGREP CLAUDE_ENV_FILE MAVERGREEN_USER_CLAUDE_ENV_FILE DYLD_INSERT_LIBRARIES 2>/dev/null || :
 
 run() { "$HOME/.local/bin/claude" "$@" 2>&1 || echo "exit:$?"; }
 
@@ -39,12 +39,31 @@ h_assert_contains "$out" "env:JSC_numberOfGCMarkers=1" "JSC env"
 h_assert_contains "$out" "env:DISABLE_INSTALLATION_CHECKS=1" "installation checks env"
 h_assert_contains "$out" "env:USE_BUILTIN_RIPGREP=
 " "ripgrep var not set"
-h_assert_contains "$out" "env:CLAUDE_ENV_FILE=
-" "env file unset"
+OURS="$TREE/share/claude-code/claude-env.sh"
+h_assert_contains "$out" "env:CLAUDE_ENV_FILE=$OURS
+" "the env file is ours"
+h_assert_contains "$out" "env:MAVERGREEN_USER_CLAUDE_ENV_FILE
+" "no user env file is saved when none was inherited"
 h_assert_ok test -d "$HOME/Library/Caches"
 
 out="$(CLAUDE_ENV_FILE="$H/my env" run x)"
-h_assert_contains "$out" "env:CLAUDE_ENV_FILE=$H/my env" "CLAUDE_ENV_FILE passed through"
+h_assert_contains "$out" "env:CLAUDE_ENV_FILE=$OURS
+" "an inherited CLAUDE_ENV_FILE is replaced by ours"
+h_assert_contains "$out" "env:MAVERGREEN_USER_CLAUDE_ENV_FILE=$H/my env
+" "an inherited CLAUDE_ENV_FILE is saved for ours to chain to"
+out="$(cd "$H" && CLAUDE_ENV_FILE="my env" run x)"
+h_assert_contains "$out" "env:MAVERGREEN_USER_CLAUDE_ENV_FILE=$H/my env
+" "a relative inherited CLAUDE_ENV_FILE is saved as an absolute path"
+out="$(CLAUDE_ENV_FILE="$OURS" MAVERGREEN_USER_CLAUDE_ENV_FILE="$H/my env" run x)"
+h_assert_contains "$out" "env:CLAUDE_ENV_FILE=$OURS
+" "a nested launch keeps ours"
+h_assert_contains "$out" "env:MAVERGREEN_USER_CLAUDE_ENV_FILE=$H/my env
+" "a nested launch keeps the saved user env file"
+out="$(CLAUDE_ENV_FILE="$H/tree b/share/claude-code/claude-env.sh" MAVERGREEN_USER_CLAUDE_ENV_FILE="$H/my env" run x)"
+h_assert_contains "$out" "env:CLAUDE_ENV_FILE=$OURS
+" "a launch nested in another tree's session uses ours"
+h_assert_contains "$out" "env:MAVERGREEN_USER_CLAUDE_ENV_FILE=$H/my env
+" "a launch nested in another tree's session keeps the user's env file, not that tree's"
 
 pathof() { printf '%s' "${1##*env:PATH=}"; }
 P0="$PATH"
@@ -111,10 +130,9 @@ arg:--mcp-config=" "order without settings"
 
 (
   CC_MG="$MG"
+  CC_TREE="$TREE"
   . "$TREE/libexec/claude-code/env.sh"
   AV="$MG/avxemu/lib/libavxemu.dylib"
-  sysctl() { printf '%s\n' "$H_LEAF7"; }
-  H_LEAF7=" SMEP BMI2 "
   unset DYLD_INSERT_LIBRARIES
   cc_setup_env
   h_assert_eq "" "${DYLD_INSERT_LIBRARIES-}" "never inserts avxemu"
@@ -128,16 +146,29 @@ arg:--mcp-config=" "order without settings"
   PATH=""
   cc_setup_env
   h_assert_eq "$HOME/.local/bin" "$PATH" "empty PATH gains no leading colon"
+  CLAUDE_ENV_FILE=""; export CLAUDE_ENV_FILE
+  cc_setup_env
+  h_assert_eq "$OURS" "$CLAUDE_ENV_FILE" "an empty inherited CLAUDE_ENV_FILE becomes ours"
+  h_assert_eq "unset" "${MAVERGREEN_USER_CLAUDE_ENV_FILE-unset}" "an empty inherited CLAUDE_ENV_FILE is not saved"
   [ "$H_FAILS" -eq 0 ]
 ) || H_FAILS=$((H_FAILS+1))
 (
   CC_MG="$MG"
+  CC_TREE="$TREE"
   . "$TREE/libexec/claude-code/env.sh"
-  unset DYLD_INSERT_LIBRARIES H_LEAF7
-  CC_SBIN="$H/fakesbin"
+  unset DYLD_INSERT_LIBRARIES
   PATH=/usr/bin:/bin
   cc_setup_env
   h_assert_eq "" "${DYLD_INSERT_LIBRARIES-}" "cc_setup_env never inserts avxemu with PATH=/usr/bin:/bin"
+  CC_TREE="$H/no tree"
+  CLAUDE_ENV_FILE="$H/my env"; export CLAUDE_ENV_FILE
+  unset MAVERGREEN_USER_CLAUDE_ENV_FILE
+  cc_setup_env
+  h_assert_eq "$H/my env" "$CLAUDE_ENV_FILE" "without our env file, an inherited CLAUDE_ENV_FILE is left alone"
+  h_assert_eq "unset" "${MAVERGREEN_USER_CLAUDE_ENV_FILE-unset}" "without our env file, nothing is saved"
+  unset CLAUDE_ENV_FILE
+  cc_setup_env
+  h_assert_eq "unset" "${CLAUDE_ENV_FILE-unset}" "without our env file, an unset CLAUDE_ENV_FILE stays unset"
   [ "$H_FAILS" -eq 0 ]
 ) || H_FAILS=$((H_FAILS+1))
 

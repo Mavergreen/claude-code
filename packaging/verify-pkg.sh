@@ -2,8 +2,8 @@
 # platform: macOS-only -- expands the package with pkgutil
 #   usage: verify-pkg.sh PKG STAGED-DRYDOCK
 #          Fails, naming the first problem, unless PKG's payload holds the launcher, its share files,
-#          the pre-uninstall hook, the updater app and a drydock byte-equal to STAGED-DRYDOCK, and its
-#          recipe-id is sha256 of the recipe followed by that drydock.
+#          the shell guards, the pre-uninstall hook, the updater app and a drydock byte-equal to
+#          STAGED-DRYDOCK, and its recipe-id is sha256 of the recipe followed by that drydock.
 set -eu
 [ $# -eq 2 ] || { echo "usage: verify-pkg.sh PKG STAGED-DRYDOCK" >&2; exit 2; }
 pkg="$1"; dd="$2"
@@ -19,7 +19,8 @@ t="$root/usr/local/mavergreen/claude-code"
 need() { [ -e "$1" ] || { echo "verify-pkg: payload lacks ${1#"$root"/}" >&2; exit 1; }; }
 needx() { need "$1"; [ -x "$1" ] || { echo "verify-pkg: ${1#"$root"/} is not executable" >&2; exit 1; }; }
 needx "$t/bin/claude"
-for f in recipe recipe-id requires settings.json mcp-config.json; do need "$t/share/claude-code/$f"; done
+for f in recipe recipe-id requires settings.json mcp-config.json claude-env.sh; do need "$t/share/claude-code/$f"; done
+for f in mktemp timeout env; do needx "$t/libexec/claude-code/shell-bin/$f"; done
 needx "$t/share/claude-code/computer-use/mcp_server.py"
 need "$t/libexec/drydock-macho-rewrite"
 need "$t/libexec/mavergreen/pre-uninstall"

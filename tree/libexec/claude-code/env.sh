@@ -20,5 +20,15 @@ cc_setup_env() {
     PATH="${PATH:+$PATH:}${_cc_lp:-$_cc_lb}"
     export PATH
   fi
+  _cc_ours="$CC_TREE/share/claude-code/claude-env.sh"
+  if [ -f "$_cc_ours" ] && [ -r "$_cc_ours" ]; then
+    case "${CLAUDE_ENV_FILE-}" in
+      ''|*/share/claude-code/claude-env.sh) ;;
+      /*) MAVERGREEN_USER_CLAUDE_ENV_FILE="$CLAUDE_ENV_FILE"; export MAVERGREEN_USER_CLAUDE_ENV_FILE ;;
+      *) MAVERGREEN_USER_CLAUDE_ENV_FILE="$PWD/$CLAUDE_ENV_FILE"; export MAVERGREEN_USER_CLAUDE_ENV_FILE ;;
+    esac
+    CLAUDE_ENV_FILE="$_cc_ours"
+    export CLAUDE_ENV_FILE
+  fi
   return 0
 }
