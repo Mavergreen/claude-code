@@ -10,15 +10,25 @@ This project is not affiliated with, endorsed by, or sponsored by Anthropic. Cla
 
 ## Installing
 
-1. Install avxemu.
-2. Install recaulk.
-3. Install libcxx22.
-4. Install icu.
-5. Install Claude Code for Mavericks.
+In Terminal, run:
 
-Then open a new Terminal window, so that your shell finds the new `claude`, and run `claude`. The first run downloads Claude Code, which takes a minute.
+```sh
+curl -fsSL https://github.com/Mavergreen/claude-code/releases/latest/download/install.sh | sh
+```
 
-If you used Mavericks Forever, the installer removes its `/usr/local/bin/claude`. Anything you pointed at `/usr/local/bin/claude` (an editor, a script, an alias) should point at `/usr/local/mavergreen/bin/claude` instead.
+It reads each of the five packages' latest release checksums, downloads only the packages you do not already have at that version, checks each download against those checksums, and installs them, asking once for an administrator's password. Run it again at any time to update them all.
+
+To install by hand instead, download each package from its latest release and install them in this order:
+
+1. avxemu, from https://github.com/Mavergreen/avxemu/releases/latest
+2. recaulk, from https://github.com/Mavergreen/recaulk/releases/latest
+3. libcxx22, from https://github.com/Mavergreen/clang-22/releases/latest
+4. icu, from https://github.com/Mavergreen/icu/releases/latest
+5. Claude Code for Mavericks, from https://github.com/Mavergreen/claude-code/releases/latest
+
+Either way, then open a new Terminal window, so that your shell finds the new `claude`, and run `claude`. The first run downloads Claude Code, which takes a minute.
+
+If you used Mavericks Forever, the Claude Code for Mavericks package removes its `/usr/local/bin/claude`. Anything you pointed at `/usr/local/bin/claude` (an editor, a script, an alias) should point at `/usr/local/mavergreen/bin/claude` instead.
 
 ## Pinning a version
 

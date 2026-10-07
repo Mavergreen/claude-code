@@ -99,6 +99,9 @@ jobs:
           sh packaging/fetch-drydock.sh "$(cat components/drydock/version)" "$BUILD/drydock"
           sh packaging/verify-pkg.sh "$BUILD/dist/claude-code-${{ steps.ver.outputs.ver }}.pkg" "$BUILD/drydock/drydock-macho-rewrite"
 
+      - name: Ship the one-command installer
+        run: cp packaging/install.sh "$BUILD/dist/install.sh"
+
       - name: Release notes
         run: |
           set -eu
