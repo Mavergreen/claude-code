@@ -147,6 +147,16 @@ h_assert_eq "3" "$RC" "unusable cache directory returns 3"
 h_assert_contains "$(cat "$CC_STATE/last-patch-error")" "could not create" "last-patch-error says why"
 rm -f "$CC_CACHE"
 
+rm -f "$(cc_entry 2.1.289)"
+echo stale > "$CC_STATE/last-patch-error"
+printf '#!/bin/sh\nexit 1\n' > "$H/bin/mktemp"; chmod +x "$H/bin/mktemp"; hash -r
+RC=0; cc_build 2.1.289 2>/dev/null || RC=$?
+rm -f "$H/bin/mktemp"; hash -r
+h_assert_eq "3" "$RC" "no temporary file for drydock to write returns 3"
+h_assert_contains "$(cat "$CC_STATE/last-patch-error")" "could not create a temporary file in $(dirname "$(cc_entry 2.1.289)")" "last-patch-error says why"
+h_assert_absent "$(cc_entry 2.1.289)" "and nothing is installed"
+rm -rf "$CC_CACHE"
+
 mv "$CC_TREE/share/claude-code/recipe-id" "$H/recipe-id.save"
 ERR="$( (cc_runnable 2.1.289 2>&1 >/dev/null) || true)"
 h_assert_contains "$ERR" "recipe-id" "missing recipe-id dies"
@@ -163,6 +173,8 @@ for v in 2.1.100 2.1.289; do mkdir -p "$CC_CACHE/$v-$KEY"; : > "$CC_CACHE/$v-$KE
 mkdir -p "$CC_CACHE/2.1.295-0123456789abcdef"; : > "$CC_CACHE/2.1.295-0123456789abcdef/claude"
 printf '2.1.299\n' > "$H/drydock-refuses"
 h_assert_eq "$CC_CACHE/2.1.289-$KEY/claude" "$(cc_runnable 2.1.299 2>/dev/null)" "fallback picks the newest entry for this recipe id by version order"
+mkdir -p "$CC_CACHE/2.1.1000-$KEY"; : > "$CC_CACHE/2.1.1000-$KEY/claude"
+h_assert_eq "$CC_CACHE/2.1.1000-$KEY/claude" "$(cc_runnable 2.1.299 2>/dev/null)" "fallback order is numeric: 2.1.1000 is newer than 2.1.289, though it sorts before it as text"
 
 rm -rf "$CC_CACHE" "$H/drydock-refuses"
 printf '#!/bin/sh\n' > "$CC_VERSIONS/2.1.400"; chmod +x "$CC_VERSIONS/2.1.400"
