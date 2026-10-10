@@ -1,0 +1,58 @@
+#!/bin/sh
+# platform: macOS-only -- Mac OS X 10.9's head refuses a count of 0, a negative count, and GNU's long options
+#   usage: head [-n [-]N | -c [-]N | -N] [-q|-v] [FILE]...   as GNU's: 0 prints nothing, -N all but the last N
+#          Anything 10.9's head takes as is goes to /usr/bin/head.
+__cc_p=
+for __cc_a in "$@"; do
+  case "$__cc_p:$__cc_a" in
+    *:--) break ;;
+    -[nc]:0*|-[nc]:-*|*:-[nc]0*|*:-[nc]-*|*:-0|*:--?*|*:-[qv]) exec /usr/bin/perl -x "$0" "$@" ;;
+  esac
+  __cc_p=$__cc_a
+done
+exec /usr/bin/head "$@"
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+my ($bytes, $count, $headers, $gnu) = (0, 10, undef, 0);
+my @files;
+my @args = @ARGV;
+while (@args) {
+    my $a = shift @args;
+    if    ($a eq '--')                         { push @files, @args; last }
+    elsif ($a =~ /^-([nc])(.*)$/)              { $bytes = $1 eq 'c'; $count = length $2 ? $2 : shift @args }
+    elsif ($a =~ /^--(lines|bytes)(?:=(.*))?$/) { $bytes = $1 eq 'bytes'; $count = defined $2 ? $2 : shift @args; $gnu = 1 }
+    elsif ($a =~ /^-(\d+)$/)                   { $count = $1 }
+    elsif ($a =~ /^(?:-q|--quiet|--silent)$/)  { $headers = 0; $gnu = 1 }
+    elsif ($a =~ /^(?:-v|--verbose)$/)         { $headers = 1; $gnu = 1 }
+    elsif ($a eq '-' || $a !~ /^-/)            { push @files, $a }
+    else                                       { exec { '/usr/bin/head' } 'head', @ARGV or die "head: /usr/bin/head: $!\n" }
+}
+defined $count && $count =~ /^-?\d+$/ or do { print STDERR "head: invalid number of lines: '", $count // '', "'\n"; exit 1 };
+exec { '/usr/bin/head' } 'head', @ARGV or die "head: /usr/bin/head: $!\n" unless $gnu || $count <= 0;
+
+$headers = @files > 1 unless defined $headers;
+@files = ('-') unless @files;
+binmode STDOUT;
+$| = 1;
+my ($rc, $first) = (0, 1);
+for my $f (@files) {
+    my $in;
+    if ($f eq '-') { $in = \*STDIN }
+    elsif (!open($in, '<', $f)) { print STDERR "head: $f: No such file or directory\n"; $rc = 1; next }
+    binmode $in;
+    if ($headers) { print $first ? '' : "\n", '==> ', $f eq '-' ? 'standard input' : $f, " <==\n" }
+    $first = 0;
+    my $data = do { local $/; <$in> };
+    $data = '' unless defined $data;
+    if ($bytes) {
+        my $n = $count >= 0 ? $count : length($data) + $count;
+        print substr $data, 0, $n > 0 ? $n : 0;
+    } else {
+        my @lines = $data =~ /([^\n]*\n|[^\n]+\z)/g;
+        my $n = $count >= 0 ? $count : @lines + $count;
+        print @lines[0 .. ($n > @lines ? @lines : $n) - 1] if $n > 0;
+    }
+}
+exit $rc;

@@ -128,3 +128,27 @@ shim realpath "" "realpath: loop1: Too many levels of symbolic links${NL}rc=1" "
 shim realpath "" "realpath: d/file/x: Not a directory${NL}rc=1" "a file used as a directory fails" d/file/x
 shim realpath "" "realpath: missing operand${NL}rc=1" "no operand fails"
 shim realpath "" "$W/d/file${NL}realpath: nodir/x: No such file or directory${NL}$W/d${NL}rc=1" "carries on after a failure" lf nodir/x d
+
+# --- head
+platform head "Mac OS X 10.9's head refuses a count of 0, a negative count, and GNU's long options"
+L4="1${NL}2${NL}3${NL}4${NL}"
+same head "$L4" "rc=0" "-0 prints nothing" -0
+same head "$L4" "rc=0" "-n 0 prints nothing" -n 0
+same head "$L4" "rc=0" "-c 0 prints nothing" -c 0
+same head "$L4" "1${NL}2${NL}rc=0" "-n -2 prints all but the last 2 lines" -n -2
+same head "$L4" "1${NL}2${NL}rc=0" "-n-2 prints all but the last 2 lines" -n-2
+same head "1${NL}2" "1${NL}rc=0" "-n -1 with no final newline" -n -1
+same head "abcdef" "abcdrc=0" "-c -2 prints all but the last 2 bytes" -c -2
+same head "$L4" "rc=0" "-n -9 of a shorter input prints nothing" -n -9
+same head "$L4" "1${NL}rc=0" "--lines=1" --lines=1
+same head "$L4" "1${NL}rc=0" "--lines 1" --lines 1
+same head "$L4" "1${NL}2rc=0" "--bytes=3" --bytes=3
+printf '1\n2\n' > h1; printf '3\n4\n' > h2
+same head "" "==> h1 <==${NL}${NL}==> h2 <==${NL}rc=0" "-0 with two files prints their headers" -0 h1 h2
+same head "" "==> h1 <==${NL}1${NL}${NL}==> h2 <==${NL}3${NL}rc=0" "-n -1 with two files" -n -1 h1 h2
+same head "" "1${NL}3${NL}rc=0" "-q drops the headers" -q -n 1 h1 h2
+same head "" "==> h1 <==${NL}1${NL}rc=0" "-v adds a header" -v -n 1 h1
+same head "x${NL}" "==> standard input <==${NL}x${NL}rc=0" "-v names stdin" -v -n 1
+same head "$L4" "1${NL}2${NL}rc=0" "-2 passes through" -2
+same head "$L4" "1${NL}2${NL}3${NL}rc=0" "-n 3 passes through" -n 3
+shim head "" "head: nonexistent: No such file or directory${NL}rc=1" "-n -1 with a missing file fails" -n -1 nonexistent
