@@ -226,6 +226,8 @@ out="$(nohold x 2>&1 || :)"
 h_assert_contains "$out" "fake-claude 2.1.280" "fallback runs the cached older entry"
 h_assert_ok test -e "$V/2.1.280"
 h_assert_ok test -e "$HOME/Library/Caches/dev.mavergreen.claude-code/2.1.280-$(cut -c1-16 "$TREE/share/claude-code/recipe-id")/claude"
+h_assert_ok test -e "$V/2.1.289"
+h_assert_fails test -e "$V/2.1.285"
 
 ST="$HOME/Library/Application Support/dev.mavergreen.claude-code"
 rm -rf "$V" "$HOME/Library/Caches/dev.mavergreen.claude-code" "$ST"

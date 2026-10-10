@@ -13,6 +13,12 @@ cc_entry() {
   printf '%s/%s-%s/claude\n' "$CC_CACHE" "$1" "$_cc_ek"
 }
 
+cc_entry_version() {
+  _cc_ev="${1%/claude}"
+  _cc_ev="${_cc_ev##*/}"
+  printf '%s\n' "${_cc_ev%-*}"
+}
+
 cc_build() {
   _cc_bv="$1"
   _cc_be="$(cc_entry "$_cc_bv")" || exit 1

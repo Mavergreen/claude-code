@@ -91,6 +91,20 @@ h_assert_eq "2.1.286 2.1.288 " "$(vlist)" "malformed running version removes not
 h_assert_eq "2.1.100-$OLD 2.1.286-$ID 2.1.288-$ID " "$(clist)" "nor cache entries"
 h_assert_eq "" "$(cc_prune 2.1.x 2>&1)" "and prints nothing"
 
+reset 2.1.280 2.1.282 2.1.284 2.1.285 2.1.288 2.1.289 2.1.290
+rm -rf "$CC_CACHE/2.1.289-$ID"
+h_assert_ok cc_prune 2.1.284 2.1.289
+h_assert_eq "2.1.282 2.1.284 2.1.289 2.1.290 " "$(vlist)" "running a fallback below the chosen version: the fallback, its predecessor, the chosen version (retried once drydock takes it) and newer remain; the versions in between go"
+h_assert_eq "2.1.282-$ID 2.1.284-$ID 2.1.290-$ID " "$(clist)" "cache follows the same rule"
+
+reset 2.1.280 2.1.284 2.1.285 2.1.288 2.1.289
+h_assert_ok cc_prune 2.1.289 2.1.284
+h_assert_eq "2.1.284 2.1.288 2.1.289 " "$(vlist)" "running a fallback above the chosen version: the chosen version, the fallback and its predecessor remain"
+
+reset 2.1.284 2.1.286 2.1.288 2.1.289
+h_assert_ok cc_prune 2.1.289 2.1.289
+h_assert_eq "2.1.288 2.1.289 " "$(vlist)" "running the chosen version prunes as usual"
+
 reset 2.1.284 2.1.286 2.1.288 2.1.289
 mkdir "$H/hold"
 cp /bin/sleep "$H/hold/claude"

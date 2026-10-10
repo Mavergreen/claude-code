@@ -4,6 +4,12 @@
 cc_prune() {
   cc_is_version "${1-}" || return 0
   _cc_pr="$1"
+  _cc_ptop="$1"
+  _cc_pch=""
+  if cc_is_version "${2-}"; then
+    _cc_pch="$2"
+    if cc_ver_gt "$2" "$1"; then _cc_ptop="$2"; fi
+  fi
   _cc_pp=""
   _cc_pi="$(cc_installed)"
   for _cc_pv in $_cc_pi; do
@@ -11,9 +17,9 @@ cc_prune() {
       if [ -z "$_cc_pp" ] || cc_ver_gt "$_cc_pv" "$_cc_pp"; then _cc_pp="$_cc_pv"; fi
     fi
   done
-  _cc_keep=" $_cc_pr $_cc_pp "
+  _cc_keep=" $_cc_pr $_cc_pp $_cc_pch "
   for _cc_pv in $_cc_pi; do
-    if cc_ver_gt "$_cc_pv" "$_cc_pr"; then _cc_keep="$_cc_keep$_cc_pv "; fi
+    if cc_ver_gt "$_cc_pv" "$_cc_ptop"; then _cc_keep="$_cc_keep$_cc_pv "; fi
   done
   for _cc_pv in $_cc_pi; do
     case "$_cc_keep" in *" $_cc_pv "*) continue ;; esac

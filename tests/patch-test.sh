@@ -24,6 +24,7 @@ cc_fetch 2.1.290
 ID="$(cut -c1-16 "$CC_TREE/share/claude-code/recipe-id")"
 E289="$CC_CACHE/2.1.289-$ID/claude"
 h_assert_eq "$E289" "$(cc_entry 2.1.289)" "entry path uses the first 16 hex of the recipe id"
+h_assert_eq "2.1.289" "$(cc_entry_version "$E289")" "an entry path names its version"
 
 h_assert_eq "$E289" "$(cc_runnable 2.1.289)" "runnable prints the entry"
 h_assert_ok test -x "$E289"
