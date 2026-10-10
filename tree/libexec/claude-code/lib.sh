@@ -28,7 +28,7 @@ cc_data_home() {
 }
 
 cc_init() {
-  case "${HOME-}" in /?*) ;; *) cc_die "HOME must be an absolute path (it is '${HOME-}')" ;; esac
+  case "${HOME-}" in /*[!/.]*) ;; *) cc_die "HOME must be an absolute path other than / (it is '${HOME-}')" ;; esac
   _cc_p="$(cc_resolve "$1")" || exit 1
   _cc_d="$(dirname "$_cc_p")"
   CC_TREE="$(dirname "$_cc_d")"

@@ -169,10 +169,18 @@ h_assert_contains "$out" "~/.local/share/claude/S.dylib" "relative XDG_DATA_HOME
 h_assert_eq "$HOME/.local/share/claude/versions" "$(XDG_DATA_HOME=rel; cc_init "$CC_TREE/bin/claude"; echo "$CC_VERSIONS")" "cc_init ignores relative XDG_DATA_HOME"
 
 out="$(HOME="" cc_init "$CC_TREE/bin/claude" 2>&1)" && h_assert_eq "failure" "success" "empty HOME refused"
-h_assert_contains "$out" "HOME must be an absolute path" "empty HOME message"
+h_assert_contains "$out" "HOME must be an absolute path other than /" "empty HOME message"
 out="$(HOME="rel/home" cc_init "$CC_TREE/bin/claude" 2>&1)" && h_assert_eq "failure" "success" "relative HOME refused"
-h_assert_contains "$out" "HOME must be an absolute path (it is 'rel/home')" "relative HOME message"
+h_assert_contains "$out" "HOME must be an absolute path other than / (it is 'rel/home')" "relative HOME message"
 out="$(HOME="/" cc_init "$CC_TREE/bin/claude" 2>&1)" && h_assert_eq "failure" "success" "root HOME refused"
+for h in // /. /./ /.. /../. ///; do
+  rc=0; out="$(HOME="$h" cc_init "$CC_TREE/bin/claude" 2>&1)" || rc=$?
+  h_assert_eq "1" "$rc" "HOME=$h, which is / spelled another way, is refused"
+  h_assert_contains "$out" "HOME must be an absolute path other than / (it is '$h')" "and the refusal names it"
+done
+for h in /.h /a. /x/..y; do
+  h_assert_eq "$h/.local/bin/claude" "$(HOME="$h" cc_init "$CC_TREE/bin/claude"; printf %s "$CC_LINK")" "HOME=$h, below / though it has dots, is accepted"
+done
 
 rm -rf "$CC_STATE" "$HOME/.local/share/claude-mavericks" "$HOME/.cache/claude-mavericks"
 : > "$CC_MG/var/claude-code/removed-mavericks-forever"
