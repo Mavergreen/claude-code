@@ -127,4 +127,6 @@ assert m["extractVersionTemplate"] == "^v(?<version>.+)$"
 PYEOF
 )" || rc=$?
   h_assert_eq "0" "$rc" "renovate.json parses and its drydock manager is right: $out"
+else
+  echo "SKIP: no python, so .github/renovate.json's drydock manager is not checked" >&2
 fi

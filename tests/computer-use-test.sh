@@ -36,6 +36,8 @@ if [ -n "$PY" ]; then
   h_assert_eq "[]" "$(jget "$CU/mcp-config.json" mcpServers computer-use-mavericks args)" "server args"
   h_assert_eq "{}" "$(jget "$CU/mcp-config.json" mcpServers computer-use-mavericks env)" "server env"
   h_assert_eq "mcp__computer-use-mavericks" "$(jget "$CU/settings.json" permissions allow 0)" "settings allows the server"
+else
+  echo "SKIP: no python, so mcp-config.json and settings.json are not parsed or checked" >&2
 fi
 
 if [ -n "$P27" ]; then
@@ -43,4 +45,6 @@ if [ -n "$P27" ]; then
   for f in mcp_server.py cu_actions.py; do
     h_assert_ok "$P27" -c 'import sys,py_compile;py_compile.compile(sys.argv[1],cfile=sys.argv[2],doraise=True)' "$CU/computer-use/$f" "$H/pyc/$f.pyc"
   done
+else
+  echo "SKIP: no python2.7, so mcp_server.py and cu_actions.py are not compiled" >&2
 fi
