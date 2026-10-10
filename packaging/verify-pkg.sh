@@ -23,6 +23,7 @@ for f in recipe recipe-id requires settings.json mcp-config.json claude-env.sh; 
 for f in mktemp timeout env setsid base64 cat date head paste readlink realpath sed sort tac uniq xargs; do needx "$t/libexec/claude-code/shell-bin/$f"; done
 needx "$t/libexec/claude-code/prepare"
 need "$t/libexec/claude-code/canonical.pl"
+needx "$t/libexec/claude-code/claude-bin/security"
 needx "$t/share/claude-code/computer-use/mcp_server.py"
 need "$t/libexec/drydock-macho-rewrite"
 need "$t/libexec/mavergreen/pre-uninstall"

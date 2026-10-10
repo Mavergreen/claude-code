@@ -1,0 +1,79 @@
+#!/bin/sh
+# platform: macOS-only -- Mac OS X 10.9's security has no -X, and its -i exits 0 when its command fails
+#   Claude Code stores its credentials with `add-generic-password ... -X HEX`, through `security -i` on
+#   stdin, or in argv when they are large, and reads `security -i`'s exit status. So -X HEX becomes -w
+#   with the decoded value (in -i input, single-quoted as 10.9's -i reads it: backslash escapes any
+#   character, so the value never reaches a command line), and -i exits with the status its last failed
+#   command returned, low byte as modern macOS does (36 locked, 44 not found). Anything else is
+#   /usr/bin/security as it is.
+for __cc_a in "$@"; do
+  case "$__cc_a" in
+    -i|-X|-*i*) exec /usr/bin/perl -x "$0" "$@" ;;
+  esac
+done
+exec "${CC_SECURITY:-/usr/bin/security}" "$@"
+#!/usr/bin/perl
+use strict;
+use warnings;
+use IPC::Open3 ();
+use Symbol ();
+
+my $security = $ENV{CC_SECURITY} || '/usr/bin/security';
+sub fail { print STDERR "security: $_[0]\n"; exit 1 }
+sub unhex {
+    my ($h) = @_;
+    $h =~ /^(?:[0-9A-Fa-f]{2})*$/ or fail('-X needs an even number of hexadecimal digits');
+    return pack 'H*', $h;
+}
+sub translate {
+    my @a = @_;
+    return @a unless @a && $a[0] =~ /^add-(?:generic|internet)-password$/;
+    for (my $i = 1; $i < $#a; $i++) {
+        next unless $a[$i] eq '-X';
+        @a[$i, $i + 1] = ('-w', unhex($a[$i + 1]));
+        $i++;
+    }
+    return @a;
+}
+
+my @global;
+push @global, shift @ARGV while @ARGV && $ARGV[0] =~ /^-/ && $ARGV[0] ne '--';
+my $interactive = grep { /^-[^-]*i/ } @global;
+exec { $security } 'security', @global, translate(@ARGV) or fail("$security: $!") unless $interactive;
+
+sub words {
+    my ($line) = @_;
+    my @w;
+    while ($line =~ /\G\s*((?:'(?:\\.|[^'\\])*'|"(?:\\"|[^"])*"|\\.|[^\s'"\\])+)/gc) {
+        my $t = $1;
+        my $v = '';
+        while ($t =~ /\G(?:'((?:\\.|[^'\\])*)'|"((?:\\"|[^"])*)"|\\(.)|([^'"\\]))/gc) {
+            if    (defined $1) { (my $s = $1) =~ s/\\(.)/$1/g; $v .= $s }
+            elsif (defined $2) { (my $s = $2) =~ s/\\"/"/g; $v .= $s }
+            else               { $v .= defined $3 ? $3 : $4 }
+        }
+        push @w, $v;
+    }
+    return @w;
+}
+sub quoted { my ($w) = @_; $w =~ s/([\\'])/\\$1/g; "'$w'" }
+
+my $input = '';
+while (my $line = <STDIN>) {
+    chomp $line;
+    my @w = words($line);
+    $input .= (grep { $_ eq '-X' } @w) ? join(' ', map { quoted($_) } translate(@w)) : $line;
+    $input .= "\n";
+}
+my $err = Symbol::gensym();
+my $pid = IPC::Open3::open3(my $in, '>&STDOUT', $err, $security, @global, @ARGV);
+print {$in} $input;
+close $in;
+my $returned = 0;
+while (my $l = <$err>) {
+    print STDERR $l;
+    $returned = $1 if $l =~ /: returned (-?\d+)$/;
+}
+waitpid $pid, 0;
+exit($? >> 8) if $? >> 8;
+exit($returned & 0xff);

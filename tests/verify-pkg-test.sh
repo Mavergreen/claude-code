@@ -20,6 +20,7 @@ mk() {
   for _f in mktemp timeout env setsid base64 cat date head paste readlink realpath sed sort tac uniq xargs; do printf '#!/bin/sh\n' > "$t/libexec/claude-code/shell-bin/$_f"; chmod +x "$t/libexec/claude-code/shell-bin/$_f"; done
   printf '#!/bin/sh\n' > "$t/libexec/claude-code/prepare"; chmod +x "$t/libexec/claude-code/prepare"
   : > "$t/libexec/claude-code/canonical.pl"
+  mkdir -p "$t/libexec/claude-code/claude-bin"; printf '#!/bin/sh\n' > "$t/libexec/claude-code/claude-bin/security"; chmod +x "$t/libexec/claude-code/claude-bin/security"
   : > "$r/Library/Application Support/Mavergreen/claude-code-updater.app/Info.plist"
 }
 comp() { pkgbuild --root "$H/$1" --identifier "$2" --version 1 --install-location / "$H/$3" >/dev/null 2>&1; }
@@ -41,6 +42,10 @@ for f in mktemp timeout env setsid base64 cat date head paste readlink realpath 
   h_assert_eq "1" "$rc" "a payload without shell-bin/$f fails"
   h_assert_contains "$out" "libexec/claude-code/shell-bin/$f" "the failure names shell-bin/$f"
 done
+mk nosecurity; rm "$H/nosecurity/usr/local/mavergreen/claude-code/libexec/claude-code/claude-bin/security"; build nosecurity
+rc=0; out="$(sh "$VP" "$H/nosecurity.pkg" "$H/dd" 2>&1)" || rc=$?
+h_assert_eq "1" "$rc" "a payload without claude-bin/security fails"
+h_assert_contains "$out" "libexec/claude-code/claude-bin/security" "the failure names claude-bin/security"
 mk nocanonical; rm "$H/nocanonical/usr/local/mavergreen/claude-code/libexec/claude-code/canonical.pl"; build nocanonical
 rc=0; out="$(sh "$VP" "$H/nocanonical.pkg" "$H/dd" 2>&1)" || rc=$?
 h_assert_eq "1" "$rc" "a payload without libexec/claude-code/canonical.pl fails"

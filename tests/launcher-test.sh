@@ -67,23 +67,29 @@ h_assert_contains "$out" "env:MAVERGREEN_USER_CLAUDE_ENV_FILE=$H/my env
 
 pathof() { printf '%s' "${1##*env:PATH=}"; }
 P0="$PATH"
+CB="$TREE/libexec/claude-code/claude-bin"
 out="$(run x)"
-h_assert_eq "$P0:$HOME/.local/bin" "$(pathof "$out")" "absent: appended at the end"
+h_assert_eq "$CB:$P0:$HOME/.local/bin" "$(pathof "$out")" "absent: appended at the end"
 out="$(PATH="$HOME/.local/bin:$P0" run x)"
-h_assert_eq "$HOME/.local/bin:$P0" "$(pathof "$out")" "present: unchanged"
+h_assert_eq "$CB:$HOME/.local/bin:$P0" "$(pathof "$out")" "present: unchanged"
 out="$(PATH="$HOME/.local/bin/../bin:$P0" run x)"
-h_assert_eq "$HOME/.local/bin/../bin:$P0:$HOME/.local/bin" "$(pathof "$out")" "non-canonical entry is not equal"
+h_assert_eq "$CB:$HOME/.local/bin/../bin:$P0:$HOME/.local/bin" "$(pathof "$out")" "non-canonical entry is not equal"
 ln -s "$HOME" "$H/homelink"
 out="$(PATH="$H/homelink/.local/bin:$P0" run x)"
-h_assert_eq "$H/homelink/.local/bin:$P0:$HOME/.local/bin" "$(pathof "$out")" "symlinked entry is not physical: physical appended"
+h_assert_eq "$CB:$H/homelink/.local/bin:$P0:$HOME/.local/bin" "$(pathof "$out")" "symlinked entry is not physical: physical appended"
 out="$(HOME="$H/homelink" PATH="$P0:$H/home/.local/bin" run x)"
-h_assert_eq "$P0:$H/home/.local/bin" "$(pathof "$out")" "non-canonical HOME: physical entry counts"
+h_assert_eq "$CB:$P0:$H/home/.local/bin" "$(pathof "$out")" "non-canonical HOME: physical entry counts"
 out="$(HOME="$H/homelink" PATH="$P0:$H/homelink/.local/bin" run x)"
-h_assert_eq "$P0:$H/homelink/.local/bin" "$(pathof "$out")" "non-canonical HOME: literal entry counts"
+h_assert_eq "$CB:$P0:$H/homelink/.local/bin" "$(pathof "$out")" "non-canonical HOME: literal entry counts"
 out="$(HOME="$H/homelink" run x)"
-h_assert_eq "$P0:$H/home/.local/bin" "$(pathof "$out")" "non-canonical HOME: physical path appended"
+h_assert_eq "$CB:$P0:$H/home/.local/bin" "$(pathof "$out")" "non-canonical HOME: physical path appended"
 out="$(PATH="$HOME/.local/bi[n]:$P0" run x)"
-h_assert_eq "$HOME/.local/bi[n]:$P0:$HOME/.local/bin" "$(pathof "$out")" "a glob-shaped entry is compared, not expanded"
+h_assert_eq "$CB:$HOME/.local/bi[n]:$P0:$HOME/.local/bin" "$(pathof "$out")" "a glob-shaped entry is compared, not expanded"
+
+out="$(PATH="$CB:$P0" run x)"
+h_assert_eq "$CB:$P0:$HOME/.local/bin" "$(pathof "$out")" "claude-bin already first: not added again"
+out="$(PATH="$P0:$CB" run x)"
+h_assert_eq "$CB:$P0:$HOME/.local/bin" "$(pathof "$out")" "claude-bin elsewhere: moved first, once"
 
 out="$(H_CPU_FEATURES=" FPU SSE4.2 " run x)"
 h_assert_contains "$out" "AVX" "refuses without AVX1.0"
@@ -145,7 +151,7 @@ arg:--mcp-config=" "order without settings"
   unset DYLD_INSERT_LIBRARIES
   PATH=""
   cc_setup_env
-  h_assert_eq "$HOME/.local/bin" "$PATH" "empty PATH gains no leading colon"
+  h_assert_eq "$CC_TREE/libexec/claude-code/claude-bin:$HOME/.local/bin" "$PATH" "empty PATH gains no empty entry"
   CLAUDE_ENV_FILE=""; export CLAUDE_ENV_FILE
   cc_setup_env
   h_assert_eq "$OURS" "$CLAUDE_ENV_FILE" "an empty inherited CLAUDE_ENV_FILE becomes ours"
