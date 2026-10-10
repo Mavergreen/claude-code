@@ -1,0 +1,53 @@
+#!/bin/sh
+# platform: macOS-only -- Mac OS X 10.9's base64 decodes with -D; its -d means debug, and re-encodes
+#   usage: base64 [-d|--decode] [-w COLS|--wrap=COLS] [FILE]   as GNU's; -w 0 neither wraps nor ends the line
+#          10.9's -D, -b COLS, -i FILE and -o FILE work alongside them. Without -d or -w, it is /usr/bin/base64,
+#          which does not wrap.
+for __cc_a in "$@"; do
+  case "$__cc_a" in
+    -d|--decode|-w*|--wrap|--wrap=*) exec /usr/bin/perl -x "$0" "$@" ;;
+  esac
+done
+exec /usr/bin/base64 "$@"
+#!/usr/bin/perl
+use strict;
+use warnings;
+use MIME::Base64 ();
+
+my ($decode, $wrap, $output, @files) = (0, undef, undef);
+my @args = @ARGV;
+while (@args) {
+    my $a = shift @args;
+    if    ($a =~ /^(?:-[dD]|--decode)$/)          { $decode = 1 }
+    elsif ($a =~ /^(?:-[wb]|--wrap|--break)$/)    { $wrap = shift @args }
+    elsif ($a =~ /^(?:-[wb]|--(?:wrap|break)=)(.*)$/) { $wrap = $1 }
+    elsif ($a =~ /^(?:-i|--input)$/)              { push @files, shift @args }
+    elsif ($a =~ /^(?:-o|--output)$/)             { $output = shift @args }
+    elsif ($a eq '--')                            { push @files, @args; last }
+    elsif ($a eq '-' || $a !~ /^-/)               { push @files, $a }
+    else                                          { print STDERR "base64: invalid option '$a'\n"; exit 1 }
+}
+defined $wrap && $wrap !~ /^\d+$/ and do { print STDERR "base64: invalid wrap size: '$wrap'\n"; exit 1 };
+@files <= 1 or do { print STDERR "base64: extra operand '$files[1]'\n"; exit 1 };
+
+my $in = \*STDIN;
+if (@files && $files[0] ne '-') {
+    open($in, '<', $files[0]) or do { print STDERR "base64: $files[0]: No such file or directory\n"; exit 1 };
+}
+my $out = \*STDOUT;
+if (defined $output && $output ne '-') {
+    open($out, '>', $output) or do { print STDERR "base64: $output: $!\n"; exit 1 };
+}
+select $out;
+binmode $in;
+binmode $out;
+my $data = do { local $/; <$in> };
+$data = '' unless defined $data;
+if ($decode) {
+    print MIME::Base64::decode_base64($data);
+} else {
+    my $enc = MIME::Base64::encode_base64($data, '');
+    $wrap = 76 unless defined $wrap;
+    if ($wrap == 0) { print $enc }
+    elsif (length $enc) { $enc =~ s/(.{1,$wrap})/$1\n/g; print $enc }
+}
