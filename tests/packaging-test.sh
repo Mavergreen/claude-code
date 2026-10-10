@@ -141,3 +141,14 @@ rc=0; out="$(sh "$PK/fetch-drydock.sh" 0.1.0 "$H/f6" 2>&1)" || rc=$?
 h_assert_eq "1" "$rc" "a pkg without the drydock component fails"
 h_assert_contains "$out" "dev.mavergreen.drydock" "the failure names the identifier"
 h_assert_eq "" "$(ls -A "$H/f6")" "nothing left in OUTDIR without the component"
+
+mkdir -p "$H/pddx/usr/local/mavergreen/drydock/bin"
+printf 'another tool\n' > "$H/pddx/usr/local/mavergreen/drydock/bin/other-tool"
+comp pddx dev.mavergreen.drydock pddx.pkg
+productbuild --package "$H/pbase.pkg" --package "$H/pddx.pkg" "$rel/drydock-0.1.0.pkg" >/dev/null 2>&1
+printf '%s  drydock-0.1.0.pkg\n' "$(shasum -a 256 "$rel/drydock-0.1.0.pkg" | cut -d' ' -f1)" > "$rel/SHA256SUMS"
+mkdir "$H/f7"
+rc=0; out="$(sh "$PK/fetch-drydock.sh" 0.1.0 "$H/f7" 2>&1)" || rc=$?
+h_assert_eq "1" "$rc" "a drydock component without drydock-macho-rewrite fails"
+h_assert_contains "$out" "drydock-0.1.0.pkg component dev.mavergreen.drydock has no usr/local/mavergreen/drydock/bin/drydock-macho-rewrite" "and says which file it lacks"
+h_assert_eq "" "$(ls -A "$H/f7")" "nothing left in OUTDIR without the binary"
