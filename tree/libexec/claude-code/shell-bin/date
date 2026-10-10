@@ -1,0 +1,23 @@
+#!/bin/sh
+# platform: macOS-only -- Mac OS X 10.9's date -r takes seconds, not GNU's file, and has no -d
+#   so -r FILE becomes -r with the file's modification time (an all-digit -r stays seconds), and
+#   -d @SECONDS or --date=@SECONDS becomes -r SECONDS. Everything else goes to /bin/date.
+__cc_n=$#
+__cc_i=0
+while [ "$__cc_i" -lt "$__cc_n" ]; do
+  __cc_a=$1; shift; __cc_i=$((__cc_i+1))
+  __cc_v=
+  case "$__cc_a" in
+    -r|-d) if [ "$__cc_i" -lt "$__cc_n" ]; then __cc_v=$1; shift; __cc_i=$((__cc_i+1)); fi ;;
+    --date=*|--reference=*) __cc_v=${__cc_a#*=}; __cc_a=${__cc_a%%=*} ;;
+  esac
+  case "$__cc_a:$__cc_v" in
+    -r:*[!0-9]*|--reference:?*)
+      [ -e "$__cc_v" ] || { echo "date: $__cc_v: No such file or directory" >&2; exit 1; }
+      set -- "$@" -r "$(/usr/bin/stat -f %m "$__cc_v")" ;;
+    -d:@*|--date:@*) set -- "$@" -r "${__cc_v#@}" ;;
+    -r:*|-d:*) set -- "$@" "$__cc_a" "$__cc_v" ;;
+    *) set -- "$@" "$__cc_a" ;;
+  esac
+done
+exec /bin/date "$@"

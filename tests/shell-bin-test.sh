@@ -193,3 +193,14 @@ printf 'abc1\nabc2\n' > u1
 same uniq "" "abc1${NL}rc=0" "-w3 INPUT" -w3 u1
 same uniq "" "rc=0" "-w3 INPUT OUTPUT writes OUTPUT" -w3 u1 u2
 h_assert_eq "abc1" "$(cat u2)" "uniq shim: -w3 INPUT OUTPUT wrote OUTPUT"
+
+# --- date
+platform date "Mac OS X 10.9's date -r takes seconds, not GNU's file, and has no -d"
+: > dt
+touch -t 200102030405.06 dt
+want="$(TZ=UTC0 /bin/date -r "$(stat -f %m dt)" +%Y-%m-%dT%H:%M:%S)"
+same date "" "$want${NL}rc=0" "-r FILE gives the file's time" -u -r dt +%Y-%m-%dT%H:%M:%S
+same date "" "1970-01-02${NL}rc=0" "-d @SECONDS" -u -d @86400 +%Y-%m-%d
+same date "" "1970-01-02${NL}rc=0" "--date=@SECONDS" -u --date=@86400 +%Y-%m-%d
+shim date "" "1970-01-02${NL}rc=0" "-r SECONDS, 10.9's own, is unchanged" -u -r 86400 +%Y-%m-%d
+shim date "" "date: nonexistent: No such file or directory${NL}rc=1" "-r with a missing file fails" -r nonexistent
