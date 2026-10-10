@@ -152,3 +152,25 @@ same head "x${NL}" "==> standard input <==${NL}x${NL}rc=0" "-v names stdin" -v -
 same head "$L4" "1${NL}2${NL}rc=0" "-2 passes through" -2
 same head "$L4" "1${NL}2${NL}3${NL}rc=0" "-n 3 passes through" -n 3
 shim head "" "head: nonexistent: No such file or directory${NL}rc=1" "-n -1 with a missing file fails" -n -1 nonexistent
+
+# --- cat
+platform cat "Mac OS X 10.9's cat has no -A, -E or -T, and no long options"
+CI="$(printf 'a\tb\001\177\n\n\n\200\233\377c\nlast')"
+SHOWN="a^Ib^A^?\$${NL}\$${NL}\$${NL}M-^@M-^[M-^?c\$${NL}last"
+same cat "$CI" "${SHOWN}rc=0" "-A shows everything" -A
+same cat "$CI" "${SHOWN}rc=0" "--show-all" --show-all
+same cat "$CI" "${SHOWN}rc=0" "-vET" -vET
+same cat "$CI" "$(printf 'a\tb\001\177$\n$\n$\n\200\233\377c$\nlast')rc=0" "-E marks line ends only" -E
+same cat "$CI" "$(printf 'a^Ib\001\177\n\n\n\200\233\377c\nlast')rc=0" "-T shows tabs only" -T
+same cat "$CI" "     1	a^Ib^A^?\$${NL}     2	\$${NL}     3	\$${NL}     4	M-^@M-^[M-^?c\$${NL}     5	lastrc=0" "-nA numbers every line" -nA
+same cat "$CI" "     1	a^Ib^A^?\$${NL}\$${NL}\$${NL}     2	M-^@M-^[M-^?c\$${NL}     3	lastrc=0" "-bA numbers non-blank lines" -bA
+same cat "$CI" "a^Ib^A^?\$${NL}\$${NL}M-^@M-^[M-^?c\$${NL}lastrc=0" "-sA squeezes blank lines" -sA
+same cat "$CI" "a^Ib^A^?\$${NL}\$${NL}M-^@M-^[M-^?c\$${NL}lastrc=0" "--squeeze-blank --show-all" --squeeze-blank --show-all
+same cat "x${NL}" "     1	x\$${NL}rc=0" "--number --show-ends" --number --show-ends
+printf 'one\n' > c1
+same cat "two${NL}" "one\$${NL}two\$${NL}rc=0" "-E FILE - reads both in turn" -E c1 -
+same cat "x${NL}" "x${NL}rc=0" "no options passes through"
+same cat "x${NL}" "     1	x${NL}rc=0" "-n passes through" -n
+same cat "" "     1	one${NL}rc=0" "an option after a file, as GNU allows" c1 -n
+same cat "$CI" "${SHOWN}rc=0" "-vet shows byte 0377 as M-^?, where 10.9's passes it through" -vet
+shim cat "" "cat: nonexistent: No such file or directory${NL}rc=1" "-A with a missing file fails" -A nonexistent

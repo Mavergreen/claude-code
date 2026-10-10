@@ -1,0 +1,74 @@
+#!/bin/sh
+# platform: macOS-only -- Mac OS X 10.9's cat has no -A, -E or -T, and no long options
+#   usage: cat [-AbeEnstTuv] [FILE]...   as GNU's: -A is -vET, -E ends each line with $, -T shows tabs as ^I,
+#          -e is -vE, -t is -vT, and -v shows byte 0377 as M-^?, which 10.9's passes through. Without any of
+#          those or a long option, it is /bin/cat.
+__cc_op=0
+for __cc_a in "$@"; do
+  case "$__cc_a" in
+    --) break ;;
+    --?*|-*[AETetv]*) exec /usr/bin/perl -x "$0" "$@" ;;
+    -?*) [ "$__cc_op" -eq 0 ] || exec /usr/bin/perl -x "$0" "$@" ;;
+    *) __cc_op=1 ;;
+  esac
+done
+exec /bin/cat "$@"
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+my %long = ('show-all' => 'A', 'number-nonblank' => 'b', 'show-ends' => 'E', number => 'n',
+            'squeeze-blank' => 's', 'show-tabs' => 'T', 'show-nonprinting' => 'v');
+my (%o, @files);
+my $gnu = 0;
+my @args = @ARGV;
+while (@args) {
+    my $a = shift @args;
+    if ($a eq '--') { push @files, @args; last }
+    if ($a =~ /^--(.+)$/) {
+        exists $long{$1} or do { print STDERR "cat: unrecognized option '$a'\n"; exit 1 };
+        $o{$long{$1}} = 1; $gnu = 1;
+    } elsif ($a =~ /^-(.+)$/) {
+        $gnu = 1 if @files;
+        for (split //, $1) {
+            /[AbeEnstTuv]/ or exec { '/bin/cat' } 'cat', @ARGV or die "cat: /bin/cat: $!\n";
+            $o{$_} = 1;
+            $gnu = 1 if /[AETetv]/;
+        }
+    } else {
+        push @files, $a;
+    }
+}
+exec { '/bin/cat' } 'cat', @ARGV or die "cat: /bin/cat: $!\n" unless $gnu;
+@o{qw(v E T)} = (1, 1, 1) if $o{A};
+@o{qw(v E)} = (1, 1) if $o{e};
+@o{qw(v T)} = (1, 1) if $o{t};
+$o{n} = 0 if $o{b};
+
+sub shown {
+    my ($c) = @_;
+    my $s = '';
+    if ($c >= 128) { $s = 'M-'; $c -= 128 }
+    return $s . ($c == 127 ? '^?' : $c < 32 ? '^' . chr($c + 64) : chr $c);
+}
+my @map = map { chr } 0 .. 255;
+if ($o{v}) { $map[$_] = shown($_) for 0 .. 8, 11 .. 31, 127 .. 255 }
+$map[9] = '^I' if $o{T};
+
+binmode STDOUT;
+$| = 1;
+my ($rc, $num, $blanks) = (0, 0, 0);
+for my $f (@files ? @files : '-') {
+    my $in;
+    if ($f eq '-') { $in = \*STDIN }
+    elsif (!open($in, '<', $f)) { print STDERR "cat: $f: No such file or directory\n"; $rc = 1; next }
+    binmode $in;
+    while (my $line = <$in>) {
+        my $nl = $line =~ s/\n\z//;
+        if (length $line) { $blanks = 0 } elsif ($nl && $o{s} && $blanks++) { next }
+        print sprintf('%6d	', ++$num) if $o{n} || ($o{b} && length $line);
+        $line =~ s/([\x00-\x08\x0a-\x1f\x7f-\xff\t])/$map[ord $1]/g;
+        print $line, $nl ? ($o{E} ? "\$\n" : "\n") : '';
+    }
+}
+exit $rc;
