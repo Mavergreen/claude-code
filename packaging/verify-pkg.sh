@@ -20,7 +20,7 @@ need() { [ -e "$1" ] || { echo "verify-pkg: payload lacks ${1#"$root"/}" >&2; ex
 needx() { need "$1"; [ -x "$1" ] || { echo "verify-pkg: ${1#"$root"/} is not executable" >&2; exit 1; }; }
 needx "$t/bin/claude"
 for f in recipe recipe-id requires settings.json mcp-config.json claude-env.sh; do need "$t/share/claude-code/$f"; done
-for f in mktemp timeout env setsid base64 cat head paste readlink realpath tac xargs; do needx "$t/libexec/claude-code/shell-bin/$f"; done
+for f in mktemp timeout env setsid base64 cat head paste readlink realpath tac uniq xargs; do needx "$t/libexec/claude-code/shell-bin/$f"; done
 needx "$t/libexec/claude-code/prepare"
 need "$t/libexec/claude-code/canonical.pl"
 needx "$t/share/claude-code/computer-use/mcp_server.py"

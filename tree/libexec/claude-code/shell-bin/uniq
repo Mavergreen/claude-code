@@ -1,0 +1,77 @@
+#!/bin/sh
+# platform: macOS-only -- Mac OS X 10.9's uniq has no -w, -D or long options
+#   usage: uniq [-c|-D] [-d] [-u] [-i] [-f N] [-s N] [-w N] [INPUT [OUTPUT]]   as GNU's: -w compares at most
+#          N characters, after -f's fields and -s's characters; -D prints every line of each repeated group.
+#          Without -w, -D or a long option, it is /usr/bin/uniq.
+for __cc_a in "$@"; do
+  case "$__cc_a" in
+    --) break ;;
+    --?*|-*[wD]*) exec /usr/bin/perl -x "$0" "$@" ;;
+  esac
+done
+exec /usr/bin/uniq "$@"
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+my %long = (count => 'c', repeated => 'd', 'all-repeated' => 'D', 'ignore-case' => 'i', unique => 'u',
+            'skip-fields' => 'f', 'skip-chars' => 's', 'check-chars' => 'w');
+my %o = (f => 0, s => 0);
+my @files;
+my $gnu = 0;
+my @args = @ARGV;
+sub value { my ($v) = @_; defined $v && $v =~ /^\d+$/ or do { print STDERR "uniq: invalid number: '", $v // '', "'\n"; exit 1 }; $v }
+while (@args) {
+    my $a = shift @args;
+    if ($a eq '--') { push @files, @args; last }
+    if ($a =~ /^--([a-z-]+)(?:=(.*))?$/) {
+        my $k = $long{$1} or do { print STDERR "uniq: unrecognized option '$a'\n"; exit 1 };
+        $o{$k} = $k =~ /[fsw]/ ? value(defined $2 ? $2 : shift @args) : 1;
+        $gnu = 1;
+    } elsif ($a =~ /^-(.+)$/) {
+        my @c = split //, $1;
+        while (defined(my $c = shift @c)) {
+            if ($c =~ /[cdDiu]/) { $o{$c} = 1 }
+            elsif ($c =~ /[fsw]/) { $o{$c} = value(@c ? join('', splice @c) : shift @args) }
+            else { exec { '/usr/bin/uniq' } 'uniq', @ARGV or die "uniq: /usr/bin/uniq: $!\n" }
+            $gnu = 1 if $c =~ /[wD]/;
+        }
+    } else {
+        push @files, $a;
+    }
+}
+exec { '/usr/bin/uniq' } 'uniq', @ARGV or die "uniq: /usr/bin/uniq: $!\n" unless $gnu;
+$o{c} && $o{D} and do { print STDERR "uniq: printing all duplicated lines and repeat counts is meaningless\n"; exit 1 };
+
+my ($in, $out) = (\*STDIN, \*STDOUT);
+if (@files && $files[0] ne '-') { open($in, '<', $files[0]) or do { print STDERR "uniq: $files[0]: No such file or directory\n"; exit 1 } }
+if (@files > 1) { open($out, '>', $files[1]) or do { print STDERR "uniq: $files[1]: $!\n"; exit 1 } }
+binmode $in;
+binmode $out;
+
+sub key {
+    my ($l) = @_;
+    $l =~ s/\n\z//;
+    $l =~ s/^(?:[ \t]*[^ \t]+){0,$o{f}}//;
+    $l = substr $l, $o{s} if length $l >= $o{s};
+    $l = substr $l, 0, $o{w} if defined $o{w};
+    return $o{i} ? lc $l : $l;
+}
+my @group;
+sub flush {
+    return unless @group;
+    my $n = @group;
+    if ($o{D}) { print {$out} @group if $n > 1 }
+    elsif (($o{d} && $n < 2) || ($o{u} && $n > 1)) { }
+    else { print {$out} $o{c} ? sprintf('%7d ', $n) : '', $group[0] }
+    @group = ();
+}
+my $last;
+while (my $line = <$in>) {
+    $line .= "\n" unless $line =~ /\n\z/;
+    my $k = key($line);
+    flush() if defined $last && $k ne $last;
+    push @group, $line;
+    $last = $k;
+}
+flush();

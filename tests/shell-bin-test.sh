@@ -174,3 +174,22 @@ same cat "x${NL}" "     1	x${NL}rc=0" "-n passes through" -n
 same cat "" "     1	one${NL}rc=0" "an option after a file, as GNU allows" c1 -n
 same cat "$CI" "${SHOWN}rc=0" "-vet shows byte 0377 as M-^?, where 10.9's passes it through" -vet
 shim cat "" "cat: nonexistent: No such file or directory${NL}rc=1" "-A with a missing file fails" -A nonexistent
+
+# --- uniq
+platform uniq "Mac OS X 10.9's uniq has no -w, -D or long options"
+UI="abc1${NL}abc2${NL}abd${NL}xyz${NL}XYZ${NL}"
+same uniq "$UI" "      2 abc1${NL}      1 abd${NL}      1 xyz${NL}      1 XYZ${NL}rc=0" "-c -w3 compares 3 characters" -c -w3
+same uniq "$UI" "      2 abc1${NL}      1 abd${NL}      1 xyz${NL}      1 XYZ${NL}rc=0" "-c -w 3" -c -w 3
+same uniq "$UI" "abc1${NL}rc=0" "-d -w3" -d -w3
+same uniq "$UI" "abd${NL}xyz${NL}XYZ${NL}rc=0" "-u -w3" -u -w3
+same uniq "$UI" "abc1${NL}abd${NL}xyz${NL}rc=0" "-i -w3" -i -w3
+same uniq "$UI" "abc1${NL}abc2${NL}rc=0" "-D -w3 prints every duplicate" -D -w3
+same uniq "$UI" "abc1${NL}abc2${NL}rc=0" "--all-repeated -w3" --all-repeated -w3
+same uniq "a x1${NL}b x2${NL}c y${NL}" "a x1${NL}c y${NL}rc=0" "-f 1 -s 1 -w 1 skips a field, then a character" -f 1 -s 1 -w 1
+same uniq "za1${NL}qa2${NL}" "za1${NL}rc=0" "-s 1 -w 1 skips a character first" -s 1 -w 1
+same uniq "$UI" "abc1${NL}abc2${NL}abd${NL}xyz${NL}XYZ${NL}rc=0" "no options passes through"
+same uniq "a${NL}a${NL}b${NL}" "a${NL}rc=0" "-d passes through" -d
+printf 'abc1\nabc2\n' > u1
+same uniq "" "abc1${NL}rc=0" "-w3 INPUT" -w3 u1
+same uniq "" "rc=0" "-w3 INPUT OUTPUT writes OUTPUT" -w3 u1 u2
+h_assert_eq "abc1" "$(cat u2)" "uniq shim: -w3 INPUT OUTPUT wrote OUTPUT"
