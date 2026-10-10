@@ -1,7 +1,7 @@
 #!/bin/sh
 # platform: macOS-only -- shipyard's uninstall hook runs on Mac OS X 10.9
 cat <<'MSG'
-To go back to Mavericks Forever, uninstall Claude Code for Mavericks first (sudo mavergreen uninstall claude-code), then rerun https://mavericksforever.com/claude/install.sh
+To go back to Mavericks Forever, after this uninstall finishes, rerun https://mavericksforever.com/claude/install.sh
 Each user's home keeps what Claude Code for Mavericks put there:
   ~/Library/Caches/dev.mavergreen.claude-code (patched copies of Claude Code)
   ~/Library/Application Support/dev.mavergreen.claude-code (the launcher's records)

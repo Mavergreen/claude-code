@@ -186,7 +186,7 @@ h_assert_ok test -x "$UN"
 h_assert_eq "#!/bin/sh" "$(sed -n 1p "$UN")" "pre-uninstall is a sh script"
 _rc=0; out="$("$UN")" || _rc=$?
 h_assert_eq "0" "$_rc" "pre-uninstall exits 0"
-h_assert_eq "To go back to Mavericks Forever, uninstall Claude Code for Mavericks first (sudo mavergreen uninstall claude-code), then rerun https://mavericksforever.com/claude/install.sh" "$(printf '%s\n' "$out" | sed -n 1p)" "pre-uninstall says how to go back"
+h_assert_eq "To go back to Mavericks Forever, after this uninstall finishes, rerun https://mavericksforever.com/claude/install.sh" "$(printf '%s\n' "$out" | sed -n 1p)" "pre-uninstall, which runs during the uninstall, says to rerun Mavericks Forever's installer after it, not to uninstall first"
 h_assert_contains "$out" "~/Library/Caches/dev.mavergreen.claude-code" "it names the per-user cache"
 h_assert_contains "$out" "~/Library/Application Support/dev.mavergreen.claude-code" "and the per-user state"
 h_assert_contains "$out" "~/.local/bin/claude" "and the per-user link"
