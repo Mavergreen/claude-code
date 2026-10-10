@@ -153,8 +153,6 @@ h_assert_eq "1" "$rc" "cc_latest fails on unreachable CDN"
 h_assert_contains "$out" "could not reach file:///nonexistent" "unreachable message"
 h_assert_contains "$out" "could not reach file:///nonexistent: curl: (37) " "the unreachable message carries curl's own error"
 
-echo "fetch-test: ok"
-
 h_offline
 rc=0; out="$(cc_fetch 2.1.296 2>&1)" || rc=$?
 h_online

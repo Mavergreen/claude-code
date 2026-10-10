@@ -80,5 +80,3 @@ h_assert_eq 3 "$rc" "drydock refuses"
 h_assert_absent "$H/sum.out2" "refused writes nothing"
 h_assert_contains "$(sysctl -n machdep.cpu.features)" " AVX1.0 " "fake sysctl features"
 h_assert_contains "$(sysctl -n machdep.cpu.leaf7_features)" " AVX2 " "fake sysctl leaf7"
-
-echo "lib-test: ok"

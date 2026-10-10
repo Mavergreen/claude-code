@@ -128,5 +128,3 @@ PYEOF
 )" || rc=$?
   h_assert_eq "0" "$rc" "renovate.json parses and its drydock manager is right: $out"
 fi
-
-echo "packaging-test: ok"
