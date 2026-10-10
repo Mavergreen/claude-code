@@ -52,7 +52,13 @@ case "$(basename "$out")" in mine.*) n=yes ;; *) n=no ;; esac
 h_assert_eq "yes" "$n" "-dt prefix is passed through: $out"
 h_assert_fails sh -c '"$@" 2>/dev/null' sh "$M" -d "$H/tmp/nonexistent-parent/x.XXXXXX"
 
-refusal() { printf "claude-env: refusing '%s' with no directory or an empty one -- an unset or empty variable would send the rest of this command to \$HOME (write '%s ~' to go home on purpose)" "$1" "$1"; }
+refusal() {
+  case "$1" in
+    pushd) _where="the stack's previous directory, or to \$HOME" ;;
+    *) _where="\$HOME" ;;
+  esac
+  printf "claude-env: refusing '%s' with no directory or an empty one -- an unset or empty variable would send the rest of this command to %s (write '%s ~' to go home on purpose)" "$1" "$_where" "$1"
+}
 shells=/bin/sh
 for s in /bin/zsh /bin/bash; do [ ! -x "$s" ] || shells="$shells $s"; done
 srun() {

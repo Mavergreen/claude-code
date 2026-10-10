@@ -19,7 +19,9 @@ __cc_cd_guard() {
     esac
   done
   if [ "$#" -eq 0 ] || [ -z "$1" ]; then
-    echo "claude-env: refusing '$__cc_cmd' with no directory or an empty one -- an unset or empty variable would send the rest of this command to \$HOME (write '$__cc_cmd ~' to go home on purpose)" >&2
+    local __cc_where="\$HOME"
+    [ "$__cc_cmd" != pushd ] || __cc_where="the stack's previous directory, or to \$HOME"
+    echo "claude-env: refusing '$__cc_cmd' with no directory or an empty one -- an unset or empty variable would send the rest of this command to $__cc_where (write '$__cc_cmd ~' to go home on purpose)" >&2
     exit 1
   fi
 }
