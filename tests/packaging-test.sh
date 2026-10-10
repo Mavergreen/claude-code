@@ -178,3 +178,9 @@ rc=0; out="$(bp 2>&1)" || rc=$?
 h_assert_eq 0 "$rc" "build-pkg runs with shipyard's scripts stubbed: $out"
 h_assert_ok test -f "$H/pkgout/cc.pkg"
 h_assert_contains "$(cat "$H/stage.log")" "--version 20261010.1 --requires avxemu --requires recaulk --requires libcxx22 --preinstall-hook " "build-pkg requires exactly the products render-recipe lists, in its order"
+case "$out" in *uncommitted*) h_assert_eq "no warning" "$out" "a committed tree/ draws no warning" ;; esac
+printf '# a local edit\n' >> "$R/tree/bin/claude"
+: > "$R/tree/untracked"
+rc=0; out="$(bp 2>&1)" || rc=$?
+h_assert_eq 0 "$rc" "a tree/ with uncommitted changes still builds"
+h_assert_contains "$out" "build-pkg: tree/ has uncommitted changes, which this package leaves out (it stages tree/ as committed at HEAD)" "and warns that they are not in the package"

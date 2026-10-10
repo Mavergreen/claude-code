@@ -17,6 +17,9 @@ ROOT=$work/root
 T=$ROOT/usr/local/mavergreen/claude-code
 install -d "$T" "$T/libexec" "$T/share/claude-code" "$T/share/doc/claude-code"
 if command -v git >/dev/null 2>&1 && git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1; then
+  if [ -n "$(git -C "$REPO" status --porcelain -- tree)" ]; then
+    echo "build-pkg: tree/ has uncommitted changes, which this package leaves out (it stages tree/ as committed at HEAD)" >&2
+  fi
   git -C "$REPO" archive HEAD tree | tar -x -C "$work"
   cp -Rp "$work/tree/." "$T/"
   rm -rf "$work/tree"
