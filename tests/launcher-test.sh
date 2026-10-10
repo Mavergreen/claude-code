@@ -59,11 +59,18 @@ h_assert_contains "$out" "env:CLAUDE_ENV_FILE=$OURS
 " "a nested launch keeps ours"
 h_assert_contains "$out" "env:MAVERGREEN_USER_CLAUDE_ENV_FILE=$H/my env
 " "a nested launch keeps the saved user env file"
+cp -R "$TREE" "$H/tree b"
 out="$(CLAUDE_ENV_FILE="$H/tree b/share/claude-code/claude-env.sh" MAVERGREEN_USER_CLAUDE_ENV_FILE="$H/my env" run x)"
 h_assert_contains "$out" "env:CLAUDE_ENV_FILE=$OURS
 " "a launch nested in another tree's session uses ours"
 h_assert_contains "$out" "env:MAVERGREEN_USER_CLAUDE_ENV_FILE=$H/my env
 " "a launch nested in another tree's session keeps the user's env file, not that tree's"
+UL="$HOME/.local/share/claude-code/claude-env.sh"
+out="$(CLAUDE_ENV_FILE="$UL" run x)"
+h_assert_contains "$out" "env:CLAUDE_ENV_FILE=$OURS
+" "a user env file at a path like a tree's is replaced by ours"
+h_assert_contains "$out" "env:MAVERGREEN_USER_CLAUDE_ENV_FILE=$UL
+" "a user env file at a path like a tree's, with no tree's shell-bin beside it, is saved for ours to chain to"
 
 pathof() { printf '%s' "${1##*env:PATH=}"; }
 P0="$PATH"
