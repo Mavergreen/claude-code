@@ -83,11 +83,10 @@ cc_last_downloaded() {
 }
 
 cc_usual() {
-  if [ "$(cc_setting "$(cc_user_settings)" autoUpdatesChannel)" = stable ]; then
-    cc_last_downloaded
-  else
-    cc_newest
-  fi
+  case "$(cc_setting "$(cc_user_settings)" autoUpdatesChannel)" in
+    ''|latest) cc_newest ;;
+    *) cc_last_downloaded ;;
+  esac
 }
 
 cc_is_installed() {
@@ -116,7 +115,7 @@ cc_choose() {
           *) if cc_is_installed "$_cc_arg" && ! cc_predates_launcher "$_cc_arg"; then _cc_pick="$_cc_arg"; fi ;;
         esac ;;
     esac
-    [ -n "$_cc_pick" ] || _cc_pick="$(cc_usual)"
+    if [ -n "$_cc_pick" ]; then touch "$CC_VERSIONS/$_cc_pick" 2>/dev/null || :; else _cc_pick="$(cc_usual)"; fi
   fi
   if [ -z "$_cc_pick" ] && [ -f "$CC_STATE/current" ] && cc_held; then
     _cc_cur="$(tr -d '[:space:]' < "$CC_STATE/current")"

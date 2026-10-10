@@ -136,6 +136,24 @@ printf '{"autoUpdatesChannel": "latest"}' > "$CFG"
 h_assert_eq "2.1.289" "$(cc_choose)" "latest channel: highest number"
 rm -f "$CFG"
 h_assert_eq "2.1.289" "$(cc_choose)" "no channel: highest number"
+rm -f "$CC_VERSIONS/2.1.206"
+printf '{"autoUpdatesChannel": "rc"}' > "$CFG"
+h_assert_eq "2.1.288" "$(cc_choose)" "rc channel: the most recently downloaded, as for stable"
+
+printf '{"autoUpdatesChannel": "stable"}' > "$CFG"
+touch -t 202601010000 "$CC_VERSIONS/2.1.288"
+touch -t 202602010000 "$CC_VERSIONS/2.1.289"
+printf '2.1.288\n' > "$H/cdn/stable"
+cc_record_intent install stable
+h_assert_eq "2.1.288" "$(cc_choose)" "install stable picks the channel's version, downloaded long ago"
+h_assert_eq "2.1.288" "$(cc_choose)" "and the next launch stays on it"
+mkv 2.1.290
+h_assert_eq "2.1.290" "$(cc_choose)" "until the stable updater downloads a newer one"
+touch -t 202603010000 "$CC_VERSIONS/2.1.290"
+cc_record_intent install 2.1.289
+h_assert_eq "2.1.289" "$(cc_choose)" "install VERSION picks it"
+h_assert_eq "2.1.289" "$(cc_choose)" "and on the stable channel the next launch stays on it too"
+rm -f "$CFG"
 
 rm -rf "$CC_VERSIONS" "$CC_STATE"
 mkv 2.1.206
