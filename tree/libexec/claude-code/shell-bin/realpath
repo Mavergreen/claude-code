@@ -1,0 +1,39 @@
+#!/usr/bin/perl
+# platform: macOS-only -- Mac OS X 10.9 has no realpath
+#   usage: realpath [-e|-m] [-q] [-s] [-z] FILE...   as GNU's (see canonical.pl): by default every component
+#          but the last must exist. -s does not follow symlinks. --relative-to and --relative-base are not supported.
+use strict;
+use warnings;
+use File::Basename ();
+my $lib = File::Basename::dirname($0) . '/../canonical.pl';
+require $lib;
+
+my %long = ('canonicalize-existing' => 'e', 'canonicalize-missing' => 'm', quiet => 'q', strip => 's',
+            'no-symlinks' => 's', zero => 'z', logical => 'L', physical => 'P');
+my ($mode, $quiet, $follow, $end) = ('f', 0, 1, "\n");
+my @files;
+$| = 1;
+while (@ARGV) {
+    my $a = shift @ARGV;
+    if ($a eq '--') { push @files, @ARGV; last }
+    my @o = $a =~ /^--(.+)$/ ? ($long{$1} // usage("unrecognized option '$a'")) : $a =~ /^-(.+)$/ ? split(//, $1) : ();
+    @o or do { push @files, $a; next };
+    for (@o) {
+        if    (/[em]/)    { $mode = $_ }
+        elsif ($_ eq 'q') { $quiet = 1 }
+        elsif ($_ eq 's') { $follow = 0 }
+        elsif ($_ eq 'z') { $end = "\0" }
+        elsif (/[LP]/)    { }
+        else { usage("invalid option -- '$_'") }
+    }
+}
+@files or usage('missing operand');
+my $rc = 0;
+for my $f (@files) {
+    my ($p, $why) = canonical($f, $mode, $follow);
+    if (defined $p) { print $p, $end }
+    else { print STDERR "realpath: $f: $why\n" unless $quiet; $rc = 1 }
+}
+exit $rc;
+
+sub usage { print STDERR "realpath: $_[0]\n"; exit 1 }

@@ -112,3 +112,19 @@ same readlink "" "$W/d/filerc=0" "-n -f prints no newline" -n -f lf
 same readlink "" "$W/d/file${NL}$W/d${NL}rc=0" "-f takes several files" -f lf d
 same readlink "" "d/file${NL}rc=0" "no option prints the link itself" lf
 same readlink "" "rc=1" "no option on a non-link fails" d/file
+
+# --- realpath
+platform realpath "Mac OS X 10.9 has no realpath"
+same realpath "" "$W/d/file${NL}rc=0" "follows links" l2
+same realpath "" "$W/d/new${NL}rc=0" "allows a missing last component" d/new
+same realpath "" "$W/lf${NL}rc=0" "-s does not follow links" -s lf
+same realpath "" "$W/d/file${NL}rc=0" "-e resolves an existing path" -e lf
+same realpath "" "$W/nodir/new${NL}rc=0" "-m needs nothing to exist" -m nodir/new
+same realpath "" "rc=1" "-q fails quietly" -q nodir/new
+same realpath "" "$W${NL}rc=0" "." .
+shim realpath "" "realpath: nodir/new: No such file or directory${NL}rc=1" "a missing directory fails" nodir/new
+shim realpath "" "realpath: d/new: No such file or directory${NL}rc=1" "-e fails on a missing last component" -e d/new
+shim realpath "" "realpath: loop1: Too many levels of symbolic links${NL}rc=1" "a loop fails" loop1
+shim realpath "" "realpath: d/file/x: Not a directory${NL}rc=1" "a file used as a directory fails" d/file/x
+shim realpath "" "realpath: missing operand${NL}rc=1" "no operand fails"
+shim realpath "" "$W/d/file${NL}realpath: nodir/x: No such file or directory${NL}$W/d${NL}rc=1" "carries on after a failure" lf nodir/x d
