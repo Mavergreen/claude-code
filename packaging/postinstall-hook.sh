@@ -16,10 +16,17 @@ _cc_inside() {
   _cc_dir="$(CDPATH= cd -P "$1" 2>/dev/null && pwd -P)" || return 1
   case "${_cc_dir%/}/" in "${_cc_top%/}/"*) return 0 ;; *) return 1 ;; esac
 }
+_cc_existing() {
+  _cc_e="$1"
+  while [ -n "$_cc_e" ] && [ ! -d "$_cc_e" ]; do _cc_e="${_cc_e%/*}"; done
+  printf '%s\n' "${_cc_e:-/}"
+}
 if [ -L "$ROOT/usr/local/mavergreen/var" ] || [ -L "$_cc_var" ] || [ -L "$_cc_log" ]; then
   echo "claude-code: $_cc_var is or passes through a symbolic link; leaving Mavericks Forever's files in place" >&2
 elif ! _cc_inside "$ROOT/usr/local/bin"; then
   echo "claude-code: $ROOT/usr/local/bin does not resolve inside $ROOT/; leaving Mavericks Forever's files in place" >&2
+elif ! _cc_inside "$(_cc_existing "$_cc_var")"; then
+  echo "claude-code: $_cc_var does not resolve inside $ROOT/; leaving Mavericks Forever's files in place" >&2
 elif mkdir -p "$_cc_var" && _cc_inside "$_cc_var"; then
   (
     if CDPATH= cd -P "$ROOT/usr/local/bin"; then

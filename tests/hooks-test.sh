@@ -151,6 +151,28 @@ h_assert_ok test -f "$V/usr/local/bin/claude"
 h_assert_eq "0" "$(ls "$H/outvar" | wc -l | tr -d ' ')" "nothing is written through a symlinked var dir"
 
 fresh
+mkdir -p "$H/outmg"
+ln -s "$H/outmg" "$V/usr/local/mavergreen"
+printf '#!/bin/sh\nMF_GEN=3\n' > "$V/usr/local/bin/claude"
+_rc=0; out="$(ROOT="$V" sh "$PK/postinstall-hook.sh" 2>&1)" || _rc=$?
+h_assert_eq "0" "$_rc" "a mavergreen dir that leaves the volume is not fatal"
+h_assert_contains "$out" "does not resolve inside" "and it says so"
+h_assert_eq "0" "$(ls -A "$H/outmg" | wc -l | tr -d ' ')" "nothing is created through a symlinked mavergreen dir, not even the var dir"
+h_assert_ok test -f "$V/usr/local/bin/claude"
+rm -rf "$H/outmg"
+
+fresh
+rm -rf "$H/vol2"
+mkdir -p "$H/vol2/usr/local/bin"
+printf '#!/bin/sh\nMF_GEN=3\n' > "$H/vol2/usr/local/bin/claude"
+rm -rf "$V/usr/local/bin"
+ln -s "$H/vol2/usr/local/bin" "$V/usr/local/bin"
+_rc=0; out="$(ROOT="$V" sh "$PK/postinstall-hook.sh" 2>&1)" || _rc=$?
+h_assert_eq "0" "$_rc" "a bin dir on a sibling path that shares the volume's prefix is not fatal"
+h_assert_contains "$out" "does not resolve inside" "it is outside the volume, though its path starts with the volume's"
+h_assert_ok test -f "$H/vol2/usr/local/bin/claude"
+
+fresh
 printf '#!/bin/sh\nMF_GEN=3\n' > "$V/usr/local/bin/claude"
 chmod 555 "$V/usr/local/bin"
 _rc=0; ROOT="$V" sh "$PK/postinstall-hook.sh" 2>/dev/null || _rc=$?
