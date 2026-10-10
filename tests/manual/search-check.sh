@@ -4,9 +4,12 @@
 #          runs PATCHED-CLAUDE as rg, ugrep and bfs (argv[0] set to the tool's name), compares them
 #          with standalone rg, ugrep and bfs, /usr/bin/grep and /usr/bin/find over /usr/share and the
 #          plugins cache, writes OUTDIR/report.md, and prints "search-check: rg|ugrep|bfs PASS|FAIL" as
-#          its last three lines. Exit 0 when all pass, 1 when any fails, 2 when it cannot run.
+#          its last six lines, as "search-check: TOOL correctness|speed PASS|FAIL". Exit 0 when all
+#          pass, 1 when any correctness check fails, 3 when all are correct but a built-in is over the
+#          speed bar, 2 when it cannot run.
 #          SEARCH_CHECK_RG, SEARCH_CHECK_UGREP and SEARCH_CHECK_BFS name the standalone tools; each
-#          defaults to the first on PATH, else in /opt/pkg/bin, /usr/local/bin or /opt/local/bin.
+#          defaults to the first on PATH, else in /opt/pkg/bin, /usr/local/bin or /opt/local/bin, and
+#          must not be PATCHED-CLAUDE itself (a link to it compares the built-in with itself).
 #          SEARCH_CHECK_CACHE names the second tree; it defaults to ~/.claude/plugins/cache.
 set -u
 [ $# -eq 2 ] || { echo "usage: search-check.sh PATCHED-CLAUDE OUTDIR" >&2; exit 2; }
@@ -27,6 +30,8 @@ ext_tool() {
   printf '%s\n' "$_et"
 }
 EXT_RG="$(ext_tool SEARCH_CHECK_RG rg)" || exit 2
+same_file() { /usr/bin/perl -MCwd=abs_path -e 'exit(abs_path($ARGV[0]) eq abs_path($ARGV[1]) ? 0 : 1)' "$1" "$2"; }
+same_file "$EXT_RG" "$bin" && { echo "the standalone rg, $EXT_RG, is the binary under test: install ripgrep (pkgsrc's, say), or set SEARCH_CHECK_RG to it" >&2; exit 2; }
 EXT_UGREP="$(ext_tool SEARCH_CHECK_UGREP ugrep)" || exit 2
 EXT_BFS="$(ext_tool SEARCH_CHECK_BFS bfs)" || exit 2
 SHARE=/usr/share
@@ -59,7 +64,7 @@ rows="$work/rows"
 details="$work/details"
 : > "$rows"
 : > "$details"
-rg_bad=0; ug_bad=0; bfs_bad=0
+rg_bad=0; ug_bad=0; bfs_bad=0; rg_slow=0; ug_slow=0; bfs_slow=0
 
 say() { printf '%s\n' "$*"; }
 row() { printf '| %s | %s | %s |\n' "$1" "$2" "$3" >> "$rows"; }
@@ -297,11 +302,14 @@ EOF
     read -r _ratio _slow <<EOF
 $(/usr/bin/perl -e 'my $r = $ARGV[1] > 0 ? $ARGV[0] / $ARGV[1] : 999; printf "%.2f %d\n", $r, $r <= $ARGV[2] ? 0 : 1' "$_bm" "$_em" "$MAX_RATIO")
 EOF
-    if [ "$_bb" -eq 0 ] && [ "$_eb" -eq 0 ] && [ "$_slow" -eq 0 ]; then
-      _r=PASS
-    else
+    _r=PASS
+    if [ "$_bb" -ne 0 ] || [ "$_eb" -ne 0 ]; then
       _r=FAIL
       case "$_tool" in rg) rg_bad=1 ;; ugrep) ug_bad=1 ;; bfs) bfs_bad=1 ;; esac
+    fi
+    if [ "$_slow" -ne 0 ]; then
+      if [ "$_r" = PASS ]; then _r=SLOW; else _r="FAIL, SLOW"; fi
+      case "$_tool" in rg) rg_slow=1 ;; ugrep) ug_slow=1 ;; bfs) bfs_slow=1 ;; esac
     fi
     printf '| `%s` | %s | %s | %s | %s | %s | %s | %s | %s |\n' "$_q" "$_bc" "$_bm" "$_ec" "$_em" "$_ratio" "$_out" "$((_bb + _eb))" "$_r" >> "$work/perf"
   done
@@ -310,10 +318,11 @@ done
 {
   cat "$work/head"
   printf '\n## Results\n\n'
-  printf -- '- rg: %s\n- ugrep: %s\n- bfs: %s\n' "$(verdict $rg_bad)" "$(verdict $ug_bad)" "$(verdict $bfs_bad)"
+  printf -- '- rg: correctness %s, speed %s\n- ugrep: correctness %s, speed %s\n- bfs: correctness %s, speed %s\n' \
+    "$(verdict $rg_bad)" "$(verdict $rg_slow)" "$(verdict $ug_bad)" "$(verdict $ug_slow)" "$(verdict $bfs_bad)" "$(verdict $bfs_slow)"
   printf '\n## Correctness\n\n| check | result | numbers |\n|---|---|---|\n'
   cat "$rows"
-  printf '\n## Performance\n\nEach search runs once as a warm-up (reported as cold), then %s timed runs (median); seconds, wall clock, perl Time::HiRes. Pass when built-in median / external median <= %s (the ratio shown is rounded) and every run exited 0. The last run of each series must leave non-empty output that agrees with the other tool: the same number of lines for rg and bfs, and for ugrep the same files, or files that only hidden directories, symlinks or binary content explain (ugrep versions differ). A mismatch counts as a failed run.\n\n' "$TIMED_RUNS" "$MAX_RATIO"
+  printf '\n## Performance\n\nEach search runs once as a warm-up (reported as cold), then %s timed runs (median); seconds, wall clock, perl Time::HiRes. A row is SLOW, a speed failure, when built-in median / external median > %s (the ratio shown is rounded); it is FAIL, a correctness failure, when a run exited non-zero or its output disagreed. The last run of each series must leave non-empty output that agrees with the other tool: the same number of lines for rg and bfs, and for ugrep the same files, or files that only hidden directories, symlinks or binary content explain (ugrep versions differ). A mismatch counts as a failed run.\n\n' "$TIMED_RUNS" "$MAX_RATIO"
   printf '| search | built-in cold | built-in median | external cold | external median | ratio | last output (built-in and external) | failed runs | result |\n|---|---|---|---|---|---|---|---|---|\n'
   cat "$work/perf"
   printf '\n## Differences\n'
@@ -321,7 +330,10 @@ done
 } > "$out/report.md"
 
 say "search-check: report $out/report.md"
-say "search-check: rg $(verdict $rg_bad)"
-say "search-check: ugrep $(verdict $ug_bad)"
-say "search-check: bfs $(verdict $bfs_bad)"
-[ $((rg_bad + ug_bad + bfs_bad)) -eq 0 ]
+for _t in rg:$rg_bad:$rg_slow ugrep:$ug_bad:$ug_slow bfs:$bfs_bad:$bfs_slow; do
+  _n="${_t%%:*}"; _f="${_t#*:}"
+  say "search-check: $_n correctness $(verdict "${_f%:*}")"
+  say "search-check: $_n speed $(verdict "${_f#*:}")"
+done
+[ $((rg_bad + ug_bad + bfs_bad)) -eq 0 ] || exit 1
+[ $((rg_slow + ug_slow + bfs_slow)) -eq 0 ] || exit 3

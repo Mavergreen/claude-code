@@ -32,8 +32,12 @@ load-time analysis cache in `AVXEMU_CACHE_DIR` there. The cache is emptied befor
 tool's timed series, so the cold run is a real first start. Timed output goes to a file, not
 `/dev/null`: ugrep notices `/dev/null` and skips the search.
 
-It writes `OUTDIR/report.md` and ends with one `search-check: TOOL PASS|FAIL` line per tool. It
-exits 0 when all three pass, 1 when any fails, and 2 when it cannot run.
+It writes `OUTDIR/report.md` and ends with two lines per tool, `search-check: TOOL correctness
+PASS|FAIL` and `search-check: TOOL speed PASS|FAIL`, so a built-in that is still correct but over the
+2x bar (ugrep's and bfs's are, which is why they stay off) never reads as a regression. Correctness
+covers every comparison above and every timed run's exit status and output; speed is only the 2x
+bar. It exits 0 when all pass, 1 when any correctness check fails, 3 when everything is correct but
+a built-in is over the bar, and 2 when it cannot run.
 
 OUTDIR must be empty or a directory from an earlier run, which the script marks with
 `OUTDIR/search-check.outdir`. Anything else, it refuses to touch.
@@ -42,8 +46,11 @@ OUTDIR must be empty or a directory from an earlier run, which the script marks 
 
 - Standalone `rg` (ripgrep), `ugrep` and `bfs`. The script takes the first of each on `PATH`,
   else in `/opt/pkg/bin`, `/usr/local/bin` or `/opt/local/bin`. Set `SEARCH_CHECK_RG`,
-  `SEARCH_CHECK_UGREP` or `SEARCH_CHECK_BFS` to a path to choose one. The takeover in release 1
-  deletes `/usr/local/bin/rg` on a migrated Mac, so rg may need installing again.
+  `SEARCH_CHECK_UGREP` or `SEARCH_CHECK_BFS` to a path to choose one. **The rg comparison needs a
+  real ripgrep**, and the takeover in release 1 deletes Mavericks Forever's `/usr/local/bin/rg`, so
+  a migrated Mac usually has none: install one (pkgsrc's, or Mavergreen/rg) first. The script
+  refuses an rg that is the binary under test, or a link to it, since that compares the built-in
+  rg with itself and always agrees.
 - `otool`, from the Command Line Tools. The script refuses a binary that doesn't link
   `libavxemu.dylib`.
 - A second tree to search. By default it is the live `~/.claude/plugins/cache`, which Claude Code
