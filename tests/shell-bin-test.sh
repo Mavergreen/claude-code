@@ -75,3 +75,14 @@ same xargs "a b${NL}" "RAN a${NL}RAN b${NL}rc=0" "-r combines with -n 1" -r -n 1
 same xargs "a b${NL}" "RAN a${NL}RAN b${NL}rc=0" "-rn1 combines" -rn1 echo RAN
 same xargs "a${NL}" "-r a${NL}rc=0" "an -r after the command is the command's" echo -r
 same xargs "a${NL}" "a${NL}rc=0" "no options passes through" echo
+
+# --- tac
+platform tac "Mac OS X 10.9 has no tac"
+same tac "1${NL}2${NL}3${NL}" "3${NL}2${NL}1${NL}rc=0" "reverses stdin"
+same tac "1${NL}2${NL}3" "32${NL}1${NL}rc=0" "a last line without a newline comes first, as GNU does"
+printf 'a\nb\n' > t1; printf 'c\nd\n' > t2
+same tac "" "b${NL}a${NL}d${NL}c${NL}rc=0" "reverses each file in turn" t1 t2
+same tac "x${NL}y${NL}" "b${NL}a${NL}y${NL}x${NL}rc=0" "- is stdin" t1 -
+same tac "" "rc=0" "an empty input gives nothing"
+shim tac "" "tac: nonexistent: No such file or directory${NL}rc=1" "a missing file fails" nonexistent
+shim tac "" "tac: -s is not supported${NL}rc=1" "options are refused" -s x

@@ -1,0 +1,21 @@
+#!/usr/bin/perl
+# platform: macOS-only -- Mac OS X 10.9 has no tac
+#   usage: tac [FILE]...   reverses the lines of each FILE in turn ('-' or none is stdin), as GNU's does,
+#          a last line without a newline included. No options.
+use strict;
+use warnings;
+
+shift @ARGV if @ARGV && $ARGV[0] eq '--';
+for (@ARGV) { /^-./ and do { print STDERR "tac: $_ is not supported\n"; exit 1 } }
+binmode STDOUT;
+my $rc = 0;
+for my $f (@ARGV ? @ARGV : '-') {
+    my $in;
+    if ($f eq '-') { $in = \*STDIN }
+    elsif (!open($in, '<', $f)) { print STDERR "tac: $f: No such file or directory\n"; $rc = 1; next }
+    binmode $in;
+    my $data = do { local $/; <$in> };
+    next unless defined $data && length $data;
+    print reverse $data =~ /([^\n]*\n|[^\n]+\z)/g;
+}
+exit $rc;
