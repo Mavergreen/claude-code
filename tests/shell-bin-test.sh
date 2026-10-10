@@ -15,8 +15,6 @@ gnu() {
     if [ -x "$_g" ]; then printf '%s\n' "$_g"; return 0; fi
   done
 }
-# same TOOL INPUT WANT LABEL ARG... -- runs the shim (and the GNU oracle, if any) with INPUT on stdin;
-# WANT is the output, stdout and stderr together, followed by "rc=N".
 same() {
   _st=$1 _si=$2 _sw=$3 _sl=$4; shift 4
   _so="$(set +e; printf '%s' "$_si" | "$SB/$_st" "$@" 2>&1; echo "rc=$?")"
@@ -27,7 +25,6 @@ same() {
     h_assert_eq "$_sw" "$_so" "GNU $_st oracle: $_sl"
   fi
 }
-# shim TOOL INPUT WANT LABEL ARG... -- the shim alone, for cases where GNU differs on purpose or prints its own wording.
 shim() {
   _st=$1 _si=$2 _sw=$3 _sl=$4; shift 4
   _so="$(set +e; printf '%s' "$_si" | "$SB/$_st" "$@" 2>&1; echo "rc=$?")"
@@ -35,7 +32,6 @@ shim() {
 }
 platform() { h_assert_eq "# platform: macOS-only -- $2" "$(sed -n 2p "$SB/$1")" "$1 declares its platform"; }
 
-# --- base64
 platform base64 "Mac OS X 10.9's base64 decodes with -D; its -d means debug, and re-encodes"
 same base64 'hi' "aGk=${NL}rc=0" "encodes"
 same base64 'aGkK' "hi${NL}rc=0" "-d decodes" -d
@@ -57,7 +53,6 @@ shim base64 '' "hi${NL}rc=0" "-d -i FILE decodes, with 10.9's -i" -d -i b64
 shim base64 'aGkK' "rc=0" "-d -o FILE decodes into FILE, with 10.9's -o" -d -o b64out
 h_assert_eq "hi" "$(cat b64out)" "base64 shim: -d -o FILE wrote FILE"
 
-# --- paste
 platform paste "Mac OS X 10.9's paste needs a file operand, where GNU reads stdin"
 same paste "a${NL}b${NL}c${NL}" "a,b,c${NL}rc=0" "-sd, with no file reads stdin" -sd,
 same paste "a${NL}b${NL}c${NL}" "a+b+c${NL}rc=0" "-s -d + with no file reads stdin" -s -d +
@@ -66,7 +61,6 @@ printf '1\n2\n' > p1
 same paste "x${NL}y${NL}" "1	x${NL}2	y${NL}rc=0" "file operands pass through" p1 -
 same paste "" "1,2${NL}rc=0" "-s -d, FILE passes through" -s -d, p1
 
-# --- xargs
 platform xargs "Mac OS X 10.9's xargs has no -r; it already skips the command when input is empty"
 same xargs "" "rc=0" "-r with empty input runs nothing" -r echo RAN
 same xargs "a b${NL}" "RAN a b${NL}rc=0" "-r with input runs the command" -r echo RAN
@@ -76,7 +70,6 @@ same xargs "a b${NL}" "RAN a${NL}RAN b${NL}rc=0" "-rn1 combines" -rn1 echo RAN
 same xargs "a${NL}" "-r a${NL}rc=0" "an -r after the command is the command's" echo -r
 same xargs "a${NL}" "a${NL}rc=0" "no options passes through" echo
 
-# --- tac
 platform tac "Mac OS X 10.9 has no tac"
 same tac "1${NL}2${NL}3${NL}" "3${NL}2${NL}1${NL}rc=0" "reverses stdin"
 same tac "1${NL}2${NL}3" "32${NL}1${NL}rc=0" "a last line without a newline comes first, as GNU does"
@@ -87,7 +80,6 @@ same tac "" "rc=0" "an empty input gives nothing"
 shim tac "" "tac: nonexistent: No such file or directory${NL}rc=1" "a missing file fails" nonexistent
 shim tac "" "tac: -s is not supported${NL}rc=1" "options are refused" -s x
 
-# --- readlink
 platform readlink "Mac OS X 10.9's readlink has no -f, -e or -m"
 W="$H/w"
 mkdir -p "$W/d/sub"
@@ -113,7 +105,6 @@ same readlink "" "$W/d/file${NL}$W/d${NL}rc=0" "-f takes several files" -f lf d
 same readlink "" "d/file${NL}rc=0" "no option prints the link itself" lf
 same readlink "" "rc=1" "no option on a non-link fails" d/file
 
-# --- realpath
 platform realpath "Mac OS X 10.9 has no realpath"
 same realpath "" "$W/d/file${NL}rc=0" "follows links" l2
 same realpath "" "$W/d/new${NL}rc=0" "allows a missing last component" d/new
@@ -129,7 +120,6 @@ shim realpath "" "realpath: d/file/x: Not a directory${NL}rc=1" "a file used as 
 shim realpath "" "realpath: missing operand${NL}rc=1" "no operand fails"
 shim realpath "" "$W/d/file${NL}realpath: nodir/x: No such file or directory${NL}$W/d${NL}rc=1" "carries on after a failure" lf nodir/x d
 
-# --- head
 platform head "Mac OS X 10.9's head refuses a count of 0, a negative count, and GNU's long options"
 L4="1${NL}2${NL}3${NL}4${NL}"
 same head "$L4" "rc=0" "-0 prints nothing" -0
@@ -153,7 +143,6 @@ same head "$L4" "1${NL}2${NL}rc=0" "-2 passes through" -2
 same head "$L4" "1${NL}2${NL}3${NL}rc=0" "-n 3 passes through" -n 3
 shim head "" "head: nonexistent: No such file or directory${NL}rc=1" "-n -1 with a missing file fails" -n -1 nonexistent
 
-# --- cat
 platform cat "Mac OS X 10.9's cat has no -A, -E or -T, and no long options"
 CI="$(printf 'a\tb\001\177\n\n\n\200\233\377c\nlast')"
 SHOWN="a^Ib^A^?\$${NL}\$${NL}\$${NL}M-^@M-^[M-^?c\$${NL}last"
@@ -175,7 +164,6 @@ same cat "" "     1	one${NL}rc=0" "an option after a file, as GNU allows" c1 -n
 same cat "$CI" "${SHOWN}rc=0" "-vet shows byte 0377 as M-^?, where 10.9's passes it through" -vet
 shim cat "" "cat: nonexistent: No such file or directory${NL}rc=1" "-A with a missing file fails" -A nonexistent
 
-# --- uniq
 platform uniq "Mac OS X 10.9's uniq has no -w, -D or long options"
 UI="abc1${NL}abc2${NL}abd${NL}xyz${NL}XYZ${NL}"
 same uniq "$UI" "      2 abc1${NL}      1 abd${NL}      1 xyz${NL}      1 XYZ${NL}rc=0" "-c -w3 compares 3 characters" -c -w3
@@ -194,7 +182,6 @@ same uniq "" "abc1${NL}rc=0" "-w3 INPUT" -w3 u1
 same uniq "" "rc=0" "-w3 INPUT OUTPUT writes OUTPUT" -w3 u1 u2
 h_assert_eq "abc1" "$(cat u2)" "uniq shim: -w3 INPUT OUTPUT wrote OUTPUT"
 
-# --- date
 platform date "Mac OS X 10.9's date -r takes seconds, not GNU's file, and has no -d"
 : > dt
 touch -t 200102030405.06 dt
@@ -205,7 +192,6 @@ same date "" "1970-01-02${NL}rc=0" "--date=@SECONDS" -u --date=@86400 +%Y-%m-%d
 shim date "" "1970-01-02${NL}rc=0" "-r SECONDS, 10.9's own, is unchanged" -u -r 86400 +%Y-%m-%d
 shim date "" "date: nonexistent: No such file or directory${NL}rc=1" "-r with a missing file fails" -r nonexistent
 
-# --- sort
 platform sort "Mac OS X 10.9's sort is GNU coreutils 5.93, without -V or -h"
 LC_ALL=C; export LC_ALL
 same sort "1.10${NL}1.2${NL}1.9${NL}" "1.2${NL}1.9${NL}1.10${NL}rc=0" "-V orders version numbers" -V
@@ -241,7 +227,6 @@ same sort "10${NL}9${NL}" "9${NL}10${NL}rc=0" "-n passes through" -n
 shim sort "" "sort: nonexistent: No such file or directory${NL}rc=2" "-V with a missing file fails" -V nonexistent
 unset LC_ALL
 
-# --- sed
 platform sed "Mac OS X 10.9's sed has no -r, GNU's -i without a suffix, N,+M addresses or long options"
 L5="1${NL}2${NL}3${NL}4${NL}5${NL}"
 fresh() { rm -rf ed; mkdir ed; printf 'a1\na2\n' > ed/f; }
