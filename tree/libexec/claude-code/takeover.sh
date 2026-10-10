@@ -68,7 +68,7 @@ cc_takeover() {
 cc_claim_link() {
   _cc_want="$CC_MG/bin/claude"
   if [ -L "$CC_LINK" ]; then
-    _cc_a="$(cc_resolve "$CC_LINK")" || _cc_a=""
+    _cc_a="$(cc_resolve "$CC_LINK" 2>/dev/null)" || _cc_a=""
     _cc_b="$(cc_resolve "$_cc_want")" || _cc_b=""
     if [ -n "$_cc_a" ] && [ "$_cc_a" = "$_cc_b" ]; then
       return 0

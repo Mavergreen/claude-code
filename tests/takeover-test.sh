@@ -188,4 +188,14 @@ h_assert_eq "-f $D/versions/2.1.300.mf-tmp.7" "$(grep -F "$D/versions/2.1.300.mf
 h_assert_eq "-rf $HOME/.local/share/claude-mavericks" "$(grep -F "$HOME/.local/share/claude-mavericks" "$H/rm.log")" "only a directory is removed recursively"
 h_assert_absent "$D/S.dylib" "the symlink is gone"
 h_assert_absent "$HOME/.local/share/claude-mavericks" "the directory is gone"
+
+rm -rf "$CC_STATE"
+rm -f "$CC_LINK"
+mkdir -p "$HOME/.local/bin"
+ln -s loop "$CC_LINK"
+ln -s claude "$HOME/.local/bin/loop"
+out="$(cc_claim_link 2>&1)"
+h_assert_eq "claude: $CC_LINK is not this launcher's and is left alone" "$out" "a symlink loop at the link is foreign, said once, with no resolver error"
+h_assert_eq "" "$(cc_claim_link 2>&1)" "and nothing is said about it at the next launch"
+h_assert_eq "loop" "$(readlink "$CC_LINK")" "the looping link is left alone"
 h_teardown
