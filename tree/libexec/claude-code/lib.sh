@@ -53,9 +53,17 @@ cc_ver_gt() {
     _cc_fa="${_cc_a%%.*}"; _cc_fb="${_cc_b%%.*}"
     case "$_cc_a" in *.*) _cc_a="${_cc_a#*.}" ;; *) _cc_a="" ;; esac
     case "$_cc_b" in *.*) _cc_b="${_cc_b#*.}" ;; *) _cc_b="" ;; esac
+    while :; do case "$_cc_fa" in 0?*) _cc_fa="${_cc_fa#0}" ;; *) break ;; esac; done
+    while :; do case "$_cc_fb" in 0?*) _cc_fb="${_cc_fb#0}" ;; *) break ;; esac; done
     : "${_cc_fa:=0}" "${_cc_fb:=0}"
-    [ "$_cc_fa" -gt "$_cc_fb" ] && return 0
-    [ "$_cc_fa" -lt "$_cc_fb" ] && return 1
+    [ "${#_cc_fa}" -gt "${#_cc_fb}" ] && return 0
+    [ "${#_cc_fa}" -lt "${#_cc_fb}" ] && return 1
+    while [ -n "$_cc_fa" ]; do
+      _cc_da="${_cc_fa%"${_cc_fa#?}"}"; _cc_db="${_cc_fb%"${_cc_fb#?}"}"
+      [ "$_cc_da" -gt "$_cc_db" ] && return 0
+      [ "$_cc_da" -lt "$_cc_db" ] && return 1
+      _cc_fa="${_cc_fa#?}"; _cc_fb="${_cc_fb#?}"
+    done
   done
   return 1
 }

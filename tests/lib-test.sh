@@ -12,6 +12,15 @@ h_assert_ok cc_ver_gt 2.1 2.0.9
 h_assert_fails cc_ver_gt 2.1.288 2.1.289
 h_assert_fails cc_ver_gt 2.1.289 2.1.289
 h_assert_fails cc_ver_gt 2.1 2.1.0
+L1=100000000000000000000000; L9=99999999999999999999999
+h_assert_ok cc_ver_gt "2.1.$L1" "2.1.$L9"
+h_assert_fails cc_ver_gt "2.1.$L9" "2.1.$L1"
+h_assert_ok cc_ver_gt 2.1.123456789012345678902 2.1.123456789012345678901
+h_assert_fails cc_ver_gt 2.1.123456789012345678901 2.1.123456789012345678902
+h_assert_fails cc_ver_gt 2.1.000000000000000000000001 2.1.1
+h_assert_fails cc_ver_gt 2.1.1 2.1.000000000000000000000001
+h_assert_ok cc_ver_gt 2.1.010 2.1.9
+h_assert_eq "" "$(cc_ver_gt "2.1.$L1" 2.1.5 2>&1; cc_ver_gt 2.1.5 "2.1.$L1" 2>&1)" "a field too long for test's integers is compared without an error"
 
 h_assert_ok cc_is_version 2.1.289
 h_assert_fails cc_is_version 2.1.289.tmp.123
