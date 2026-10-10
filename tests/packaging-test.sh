@@ -37,6 +37,7 @@ h_assert_eq "65" "$(wc -c < "$H/out1/recipe-id" | tr -d ' ')" "recipe-id is 64 h
 h_assert_ne() { [ "$1" != "$2" ] || { echo "FAIL: $3" >&2; H_FAILS=$((H_FAILS+1)); }; }
 h_assert_ne "$(cat "$H/out1/recipe-id")" "$(cat "$H/out2/recipe-id")" "recipe-id changes with the binary"
 h_assert_eq "4" "$(wc -l < "$H/out1/requires" | tr -d ' ')" "requires has four lines"
+h_assert_eq "$(ls -l "$H/out1/recipe" | cut -c1-10)" "$(ls -l "$H/out1/requires" | cut -c1-10)" "requires gets the same permissions as recipe, so every user can read it once installed"
 h_assert_eq "avxemu https://github.com/Mavergreen/avxemu/releases/latest" "$(sed -n 1p "$H/out1/requires")" "avxemu line"
 h_assert_eq "recaulk https://github.com/Mavergreen/recaulk/releases/latest" "$(sed -n 2p "$H/out1/requires")" "recaulk line"
 h_assert_eq "libcxx22 https://github.com/Mavergreen/clang-22/releases/latest" "$(sed -n 3p "$H/out1/requires")" "libcxx22 line"
@@ -46,6 +47,7 @@ h_assert_eq "2" "$rc" "wrong argument count exits 2"
 h_assert_contains "$out" "usage:" "wrong argument count prints usage"
 
 mkdir "$H/shipyard2" "$H/out5"
+printf 'earlier requires\n' > "$H/out5/requires"
 cat > "$H/shipyard2/product-name.sh" <<'STUB'
 #!/bin/sh
 [ "$2" = avxemu ] || { echo "unregistered: $2" >&2; exit 1; }
@@ -54,6 +56,8 @@ STUB
 rc=0; out="$(SHIPYARD_SCRIPTS="$H/shipyard2" sh "$PK/render-recipe.sh" "$H/dd1" "$H/out5" 2>&1)" || rc=$?
 h_assert_ne "0" "$rc" "an unregistered product fails"
 h_assert_contains "$out" "unregistered" "an unregistered product says why"
+h_assert_eq "earlier requires" "$(cat "$H/out5/requires")" "a failed render leaves the requires it found in place"
+h_assert_eq "requires" "$(ls -A "$H/out5")" "and no temporary file"
 
 if [ -x /usr/bin/python2.7 ]; then PY=/usr/bin/python2.7
 elif command -v python3 >/dev/null 2>&1; then PY=python3

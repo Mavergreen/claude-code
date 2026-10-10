@@ -10,11 +10,14 @@ here="$(cd "$(dirname "$0")" && pwd)"
 [ -f "$bin" ] || { echo "no such drydock binary: $bin" >&2; exit 1; }
 [ -d "$out" ] || { echo "no such directory: $out" >&2; exit 1; }
 . "$here/../build/msc.sh"
-: > "$out/requires"
+req="$out/.requires.$$"
+trap 'rm -f "$req"' EXIT
+: > "$req"
 for short in avxemu recaulk libcxx22 icu; do
   repo="$(sh "$SHIPYARD_SCRIPTS/product-name.sh" repo "$short")"
   [ -n "$repo" ] || { echo "no repo for $short" >&2; exit 1; }
-  printf '%s https://github.com/Mavergreen/%s/releases/latest\n' "$short" "$repo" >> "$out/requires"
+  printf '%s https://github.com/Mavergreen/%s/releases/latest\n' "$short" "$repo" >> "$req"
 done
+mv -f "$req" "$out/requires"
 cp "$here/recipe.in" "$out/recipe"
 cat "$out/recipe" "$bin" | shasum -a 256 | cut -d' ' -f1 > "$out/recipe-id"
