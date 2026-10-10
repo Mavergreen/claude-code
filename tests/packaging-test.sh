@@ -152,3 +152,29 @@ rc=0; out="$(sh "$PK/fetch-drydock.sh" 0.1.0 "$H/f7" 2>&1)" || rc=$?
 h_assert_eq "1" "$rc" "a drydock component without drydock-macho-rewrite fails"
 h_assert_contains "$out" "drydock-0.1.0.pkg component dev.mavergreen.drydock has no usr/local/mavergreen/drydock/bin/drydock-macho-rewrite" "and says which file it lacks"
 h_assert_eq "" "$(ls -A "$H/f7")" "nothing left in OUTDIR without the binary"
+
+DV="$(cat "$H_REPO/components/drydock/version")"
+mkdir -p "$H/rel/v$DV"
+productbuild --package "$H/pbase.pkg" --package "$H/pdd.pkg" "$H/rel/v$DV/drydock-$DV.pkg" >/dev/null 2>&1
+(cd "$H/rel/v$DV" && shasum -a 256 "drydock-$DV.pkg" > SHA256SUMS)
+R="$H/repo"
+mkdir -p "$R/build" "$R/components/drydock"
+cp -R "$PK" "$H_REPO/tree" "$R/"
+cp "$H_REPO/build/msc.sh" "$R/build/"
+cp "$H_REPO/components/drydock/version" "$R/components/drydock/"
+printf 'license\n' > "$R/LICENSE"
+printf 'readme\n' > "$R/README.md"
+sed 's/^for short in avxemu recaulk libcxx22 icu; do$/for short in avxemu recaulk libcxx22; do/' "$PK/render-recipe.sh" > "$R/packaging/render-recipe.sh"
+git -C "$R" init -q
+git -C "$R" add -A
+git -C "$R" -c user.name=test -c user.email=test@example.invalid -c commit.gpgsign=false -c core.hooksPath=/dev/null commit -qm fixture
+mkdir -p "$H/sy" "$H/b/claude-code-updater.app"
+cp "$H/shipyard/product-name.sh" "$H/sy/"
+printf '#!/bin/sh\nprintf "%%s\\n" "$*" > "$H/stage.log"\n' > "$H/sy/stage_product.sh"
+printf '#!/bin/sh\n' > "$H/sy/build_component_pkg.sh"
+printf '#!/bin/sh\nwhile [ $# -gt 0 ]; do [ "$1" != --out ] || : > "$2"; shift; done\n' > "$H/sy/set_install_floor.sh"
+bp() { SHIPYARD_SCRIPTS="$H/sy" sh "$R/packaging/build-pkg.sh" "$H/b" 20261010.1 "$H/pkgout/cc.pkg"; }
+rc=0; out="$(bp 2>&1)" || rc=$?
+h_assert_eq 0 "$rc" "build-pkg runs with shipyard's scripts stubbed: $out"
+h_assert_ok test -f "$H/pkgout/cc.pkg"
+h_assert_contains "$(cat "$H/stage.log")" "--version 20261010.1 --requires avxemu --requires recaulk --requires libcxx22 --preinstall-hook " "build-pkg requires exactly the products render-recipe lists, in its order"

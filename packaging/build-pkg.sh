@@ -28,8 +28,10 @@ sh "$REPO/packaging/fetch-drydock.sh" "$(cat "$REPO/components/drydock/version")
 sh "$REPO/packaging/render-recipe.sh" "$T/libexec/drydock-macho-rewrite" "$T/share/claude-code"
 cp "$REPO/LICENSE" "$REPO/README.md" "$T/share/doc/claude-code/"
 find "$ROOT" -name '._*' -delete
+set --
+while read -r short _url; do set -- "$@" --requires "$short"; done < "$T/share/claude-code/requires"
 sh "$SHIPYARD/stage_product.sh" --stage "$ROOT" --product claude-code --name "Mavericks Claude Code" \
-  --version "$V" --requires avxemu --requires recaulk --requires libcxx22 --requires icu \
+  --version "$V" "$@" \
   --preinstall-hook "$REPO/packaging/preinstall-hook.sh" --postinstall-hook "$REPO/packaging/postinstall-hook.sh" \
   --scripts-out "$work/scripts" --updater-app "$B/claude-code-updater.app"
 sh "$SHIPYARD/build_component_pkg.sh" --root "$ROOT" --identifier dev.mavergreen.claude-code \
