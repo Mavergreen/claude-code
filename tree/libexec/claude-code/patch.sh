@@ -29,6 +29,7 @@ cc_build() {
     0) ;;
     1) rm -f "$CC_VERSIONS/$_cc_bv"
        (cc_fetch "$_cc_bv") || return 2 ;;
+    3) return 4 ;;
     *) return 2 ;;
   esac
   _cc_bd="$(dirname "$_cc_be")"
@@ -71,7 +72,15 @@ cc_runnable() {
     cc_entry "$_cc_rv"
     return 0
   fi
-  if [ "$_cc_rr" -eq 2 ]; then
+  if [ "$_cc_rr" -eq 4 ]; then
+    _cc_why="Claude Code $_cc_rv is not published at $CC_CDN"
+    _cc_rl="$(cc_latest 2>/dev/null)" || _cc_rl=""
+    if [ -n "$_cc_rl" ] && [ "$_cc_rl" != "$_cc_rv" ]; then
+      cc_note "$_cc_why; running the latest, $_cc_rl"
+      cc_runnable "$_cc_rl"
+      return
+    fi
+  elif [ "$_cc_rr" -eq 2 ]; then
     _cc_why="could not verify Claude Code $_cc_rv while offline"
   else
     _cc_why="could not patch Claude Code $_cc_rv (see $CC_STATE/last-patch-error)"

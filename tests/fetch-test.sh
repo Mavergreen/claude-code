@@ -33,7 +33,7 @@ rc=0; cc_verified 2.1.289 || rc=$?
 h_assert_eq "1" "$rc" "cc_verified: 1 on mismatch"
 h_assert_fails test -e "$CC_STATE/verified/2.1.289"
 rc=0; cc_verified 9.9.9 || rc=$?
-h_assert_eq "2" "$rc" "cc_verified: 2 when manifest unreachable"
+h_assert_eq "3" "$rc" "cc_verified: 3 when the version is not published (file:// reports a missing manifest as curl's 37)"
 
 printf '# changed after manifest\n' >> "$H/cdn/2.1.290/darwin-x64/claude"
 rc=0; out="$(cc_fetch 2.1.290 2>&1)" || rc=$?
@@ -126,14 +126,27 @@ h_assert_eq "143" "$rc" "an interrupted download ends by that signal"
 h_assert_eq "" "$(ls "$CC_VERSIONS" | grep 'mavergreen-dl' || true)" "an interrupted download leaves no temp file"
 
 cp "$CC_VERSIONS/2.1.294" "$CC_VERSIONS/2.1.298"
-CLAUDE_CODE_CDN="file:///nonexistent"; cc_init "$CC_TREE/bin/claude"
-rc=0; cc_verified 2.1.294 || rc=$?
-h_assert_eq "0" "$rc" "offline: the recorded checksum verifies"
-rc=0; cc_verified 2.1.298 || rc=$?
-h_assert_eq "2" "$rc" "offline without a record: cannot verify"
+for f in "7 curl: (7) Failed to connect to downloads.claude.ai port 443: Connection refused" "6 curl: (6) Could not resolve host: downloads.claude.ai" "28 curl: (28) Connection timed out after 20001 milliseconds"; do
+  h_curl_fails "${f%% *}" "${f#* }"
+  rc=0; cc_verified 2.1.294 || rc=$?
+  h_assert_eq "0" "$rc" "offline (curl ${f%% *}): the recorded checksum verifies"
+  rc=0; cc_verified 2.1.298 || rc=$?
+  h_assert_eq "2" "$rc" "offline (curl ${f%% *}) without a record: cannot verify"
+done
+for f in "22 curl: (22) The requested URL returned error: 404" "37 curl: (37) Couldn't open file /cdn/2.1.298/manifest.json"; do
+  h_curl_fails "${f%% *}" "${f#* }"
+  rc=0; cc_verified 2.1.294 || rc=$?
+  h_assert_eq "0" "$rc" "not published (curl ${f%% *}): the recorded checksum still verifies"
+  rc=0; cc_verified 2.1.298 || rc=$?
+  h_assert_eq "3" "$rc" "not published (curl ${f%% *}) without a record: 3, which is not the offline 2"
+done
+h_offline
 printf '# tampered\n' >> "$CC_VERSIONS/2.1.294"
 rc=0; cc_verified 2.1.294 || rc=$?
 h_assert_eq "1" "$rc" "offline: a record that does not match the binary is a mismatch"
+h_online
+
+CLAUDE_CODE_CDN="file:///nonexistent"; cc_init "$CC_TREE/bin/claude"
 
 rc=0; out="$(cc_latest 2>&1)" || rc=$?
 h_assert_eq "1" "$rc" "cc_latest fails on unreachable CDN"
@@ -142,9 +155,8 @@ h_assert_contains "$out" "could not reach file:///nonexistent: curl: (37) " "the
 
 echo "fetch-test: ok"
 
-h_fake_curl
-: > "$H/curl-offline"
+h_offline
 rc=0; out="$(cc_fetch 2.1.296 2>&1)" || rc=$?
-rm -f "$H/curl-offline"
+h_online
 h_assert_eq "1" "$rc" "cc_fetch fails when the CDN cannot be reached"
 h_assert_contains "$out" "could not read the checksum for Claude Code 2.1.296 from $CC_CDN: curl: (7) Failed to connect" "and the message carries curl's own error"

@@ -80,9 +80,10 @@ h_fake_curl() {
   cat > "$H/bin/curl" <<'CURL'
 #!/bin/sh
 printf '%s\n' "$*" >> "$H/curl.log"
-if [ -f "$H/curl-offline" ]; then
-  echo "curl: (7) Failed to connect to downloads.claude.ai port 443: Connection refused" >&2
-  exit 7
+if [ -f "$H/curl-fails" ]; then
+  IFS= read -r f < "$H/curl-fails"
+  echo "${f#* }" >&2
+  exit "${f%% *}"
 fi
 if [ -f "$H/curl-hang" ]; then
   o=""; prev=""
@@ -98,6 +99,10 @@ CURL
   chmod +x "$H/bin/curl"
   hash -r
 }
+
+h_curl_fails() { h_fake_curl; printf '%s %s\n' "$1" "$2" > "$H/curl-fails"; }
+h_offline() { h_curl_fails 7 "curl: (7) Failed to connect to downloads.claude.ai port 443: Connection refused"; }
+h_online() { rm -f "$H/curl-fails"; }
 
 h_fake_drydock() {
   _h_bin="$H/root/usr/local/mavergreen/claude-code/libexec"

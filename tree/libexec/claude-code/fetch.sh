@@ -12,7 +12,13 @@ cc_latest() {
 
 cc_manifest_sum() {
   _cc_msum=""
-  _cc_m="$(cc_get "$CC_CDN/$1/manifest.json" 2>&1)" || { _cc_merr="$_cc_m"; return 1; }
+  _cc_mr=0
+  _cc_m="$(cc_get "$CC_CDN/$1/manifest.json" 2>&1)" || _cc_mr=$?
+  if [ "$_cc_mr" -ne 0 ]; then
+    _cc_merr="$_cc_m"
+    case "$_cc_mr" in 22|37) return 3 ;; esac
+    return 1
+  fi
   _cc_msum="$(printf '%s' "$_cc_m" | tr -d '\n\r\t' \
     | grep -Eo "\"darwin-x64\"[^}]*\"checksum\"[[:space:]]*:[[:space:]]*\"[a-f0-9]{64}\"" \
     | grep -Eo '[a-f0-9]{64}')" || :
@@ -62,7 +68,9 @@ cc_fetch() {
 
 cc_verified() {
   _cc_vrec="$CC_STATE/verified/$1"
-  if cc_manifest_sum "$1"; then
+  _cc_vm=0
+  cc_manifest_sum "$1" || _cc_vm=$?
+  if [ "$_cc_vm" -eq 0 ]; then
     _cc_want="$_cc_msum"
     if [ -f "$CC_VERSIONS/$1" ] && [ "$(cc_sha256 "$CC_VERSIONS/$1")" = "$_cc_want" ]; then
       cc_remember_verified "$1" "$_cc_want"
@@ -74,7 +82,7 @@ cc_verified() {
   _cc_want=""
   if [ -f "$_cc_vrec" ]; then IFS= read -r _cc_want < "$_cc_vrec" || :; fi
   case "$_cc_want" in
-    *[!0-9a-f]*|'') return 2 ;;
+    *[!0-9a-f]*|'') [ "$_cc_vm" -ne 3 ] || return 3; return 2 ;;
   esac
   [ -f "$CC_VERSIONS/$1" ] || return 1
   [ "$(cc_sha256 "$CC_VERSIONS/$1")" = "$_cc_want" ]

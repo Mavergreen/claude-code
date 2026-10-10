@@ -250,7 +250,7 @@ h_cdn_latest 2.1.289
 runs "$(nohold x 2>&1 || :)" 2.1.289 "bootstrap records the checksum it verified"
 cp "$TREE/share/claude-code/recipe" "$H/recipe.orig"
 cp "$TREE/share/claude-code/recipe-id" "$H/recipe-id.orig"
-mv "$H/cdn" "$H/cdn.off"
+h_offline
 printf '# the next recipe\n' > "$TREE/share/claude-code/recipe"
 shasum -a 256 "$TREE/share/claude-code/recipe" | cut -d' ' -f1 > "$TREE/share/claude-code/recipe-id"
 runs "$(nohold x 2>&1 || :)" 2.1.289 "offline after a recipe change: builds from the recorded checksum and runs"
@@ -260,7 +260,7 @@ rm -rf "$HOME/Library/Caches/dev.mavergreen.claude-code" "$ST/verified"
 out="$(nohold x 2>&1 || echo "exit:$?")"
 h_assert_contains "$out" "cannot run Claude Code 2.1.289: could not verify Claude Code 2.1.289 while offline" "offline with no record cannot verify"
 h_assert_contains "$out" "exit:1" "and does not run"
-mv "$H/cdn.off" "$H/cdn"
+h_online
 cp "$H/recipe.orig" "$TREE/share/claude-code/recipe"
 cp "$H/recipe-id.orig" "$TREE/share/claude-code/recipe-id"
 
@@ -287,3 +287,12 @@ runs "$(nohold install 2.1.289 2>&1 || :)" 2.1.289 "install of a supported versi
 h_assert_eq "install 2.1.289" "$(cat "$ST/repick" 2>/dev/null || :)" "and records it"
 runs "$(nohold install stable 2>&1 || :)" 2.1.289 "install of a channel still runs Claude Code's install"
 h_assert_eq "install stable" "$(cat "$ST/repick" 2>/dev/null || :)" "and records it"
+
+rm -rf "$V" "$ST" "$HOME/Library/Caches/dev.mavergreen.claude-code"
+mkdir -p "$V"
+cp "$H/cdn/2.1.289/darwin-x64/claude" "$V/2.1.401"
+h_cdn_latest 2.1.289
+out="$(nohold x 2>&1 || echo "exit:$?")"
+h_assert_contains "$out" "Claude Code 2.1.401 is not published at $CLAUDE_CODE_CDN; running the latest, 2.1.289" "a launch whose version the CDN does not publish says so"
+runs "$out" 2.1.289 "and runs the latest instead of dying"
+h_assert_ok test -e "$V/2.1.401"

@@ -61,7 +61,7 @@ h_assert_contains "$(cat "$CC_STATE/last-patch-error")" "fake drydock: progress 
 h_assert_eq "0" "$(leftovers)" "refusal leaves no temp files"
 
 mkdir -p "$H/save"
-mv "$H/cdn" "$H/save/cdn"
+h_offline
 mv "$CC_STATE/verified/2.1.290" "$H/save/verified-2.1.290"
 rm -f "$H/drydock-refuses"
 BEFORE="$(count)"
@@ -81,7 +81,7 @@ BEFORE="$(count)"
 h_assert_eq "$(cc_entry 2.1.290)" "$(cc_runnable 2.1.290 2>/dev/null)" "offline after a recipe change, the recorded checksum still builds"
 h_assert_eq "$((BEFORE+1))" "$(count)" "and that build ran drydock"
 cp "$H/save/recipe" "$H/save/recipe-id" "$CC_TREE/share/claude-code/"
-mv "$H/save/cdn" "$H/cdn"
+h_online
 
 rm -rf "$CC_CACHE"
 printf '2.1.290\n' > "$H/drydock-refuses"
@@ -150,3 +150,22 @@ for v in 2.1.100 2.1.289; do mkdir -p "$CC_CACHE/$v-$KEY"; : > "$CC_CACHE/$v-$KE
 mkdir -p "$CC_CACHE/2.1.295-0123456789abcdef"; : > "$CC_CACHE/2.1.295-0123456789abcdef/claude"
 printf '2.1.299\n' > "$H/drydock-refuses"
 h_assert_eq "$CC_CACHE/2.1.289-$KEY/claude" "$(cc_runnable 2.1.299 2>/dev/null)" "fallback picks the newest entry for this recipe id by version order"
+
+rm -rf "$CC_CACHE" "$H/drydock-refuses"
+printf '#!/bin/sh\n' > "$CC_VERSIONS/2.1.400"; chmod +x "$CC_VERSIONS/2.1.400"
+h_cdn_publish 2.1.300
+h_cdn_latest 2.1.300
+ERR="$( (cc_runnable 2.1.400 2>&1 >/dev/null) || true)"
+h_assert_contains "$ERR" "Claude Code 2.1.400 is not published at $CC_CDN; running the latest, 2.1.300" "a version the CDN does not publish, with no recorded checksum, says so and names the latest"
+h_assert_eq "$(cc_entry 2.1.300)" "$( (cc_runnable 2.1.400 2>/dev/null) || true)" "and runs the latest, fetched and patched, rather than dying as if offline"
+h_assert_ok test -x "$CC_VERSIONS/2.1.300"
+h_cdn_latest 2.1.400
+ERR="$( (cc_runnable 2.1.400 2>&1 >/dev/null) || true)"
+h_assert_contains "$ERR" "Claude Code 2.1.400 is not published at $CC_CDN; running 2.1.300" "when the latest is that same unpublished version, the newest cached entry runs"
+rm -rf "$CC_CACHE"
+ERR="$( (cc_runnable 2.1.400 2>&1 >/dev/null) || true)"
+h_assert_contains "$ERR" "cannot run Claude Code 2.1.400: Claude Code 2.1.400 is not published at $CC_CDN" "and with nothing cached it dies saying why"
+h_offline
+ERR="$( (cc_runnable 2.1.400 2>&1 >/dev/null) || true)"
+h_assert_contains "$ERR" "cannot run Claude Code 2.1.400: could not verify Claude Code 2.1.400 while offline" "an unreachable CDN is still offline, not unpublished"
+h_online
