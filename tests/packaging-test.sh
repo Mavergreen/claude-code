@@ -17,13 +17,13 @@ case "$2" in
   *) echo "unregistered: $2" >&2; exit 1 ;;
 esac
 STUB
-SHIPYARD_SCRIPTS="$H/shipyard"; export SHIPYARD_SCRIPTS
+render() { SHIPYARD_SCRIPTS="$H/shipyard" sh "$PK/render-recipe.sh" "$@"; }
 
 printf 'drydock one\n' > "$H/dd1"
 printf 'drydock two\n' > "$H/dd2"
 mkdir "$H/out1" "$H/out2"
-sh "$PK/render-recipe.sh" "$H/dd1" "$H/out1"
-sh "$PK/render-recipe.sh" "$H/dd2" "$H/out2"
+render "$H/dd1" "$H/out1"
+render "$H/dd2" "$H/out2"
 
 h_assert_eq "0" "$(grep -c '@' "$H/out1/recipe")" "no placeholder survives"
 h_assert_eq "dylib         replace  /usr/lib/libSystem.B.dylib   /usr/local/mavergreen/recaulk/lib/libRecaulkSystem.dylib" "$(grep 'libSystem.B' "$H/out1/recipe")" "libSystem replacement"
@@ -41,7 +41,7 @@ h_assert_eq "avxemu https://github.com/Mavergreen/avxemu/releases/latest" "$(sed
 h_assert_eq "recaulk https://github.com/Mavergreen/recaulk/releases/latest" "$(sed -n 2p "$H/out1/requires")" "recaulk line"
 h_assert_eq "libcxx22 https://github.com/Mavergreen/clang-22/releases/latest" "$(sed -n 3p "$H/out1/requires")" "libcxx22 line"
 h_assert_eq "icu https://github.com/Mavergreen/icu/releases/latest" "$(sed -n 4p "$H/out1/requires")" "icu line"
-rc=0; out="$(sh "$PK/render-recipe.sh" "$H/dd1" 2>&1)" || rc=$?
+rc=0; out="$(render "$H/dd1" 2>&1)" || rc=$?
 h_assert_eq "2" "$rc" "wrong argument count exits 2"
 h_assert_contains "$out" "usage:" "wrong argument count prints usage"
 
@@ -55,8 +55,30 @@ rc=0; out="$(SHIPYARD_SCRIPTS="$H/shipyard2" sh "$PK/render-recipe.sh" "$H/dd1" 
 h_assert_ne "0" "$rc" "an unregistered product fails"
 h_assert_contains "$out" "unregistered" "an unregistered product says why"
 
+if [ -x /usr/bin/python2.7 ]; then PY=/usr/bin/python2.7
+elif command -v python3 >/dev/null 2>&1; then PY=python3
+else PY=""; fi
+if [ -n "$PY" ]; then
+  rc=0
+  out="$("$PY" - "$H_REPO/.github/renovate.json" 2>&1 <<'PYEOF'
+import json, sys
+c = json.load(open(sys.argv[1]))
+m = [x for x in c["customManagers"] if x.get("depNameTemplate") == "Mavergreen/drydock"]
+assert len(m) == 1, "no single drydock manager"
+m = m[0]
+assert m["managerFilePatterns"] == ["/^components/drydock/version$/"], m["managerFilePatterns"]
+assert m["datasourceTemplate"] == "github-releases"
+assert m["extractVersionTemplate"] == "^v(?<version>.+)$"
+PYEOF
+)" || rc=$?
+  h_assert_eq "0" "$rc" "renovate.json parses and its drydock manager is right: $out"
+else
+  echo "SKIP: no python, so .github/renovate.json's drydock manager is not checked" >&2
+fi
+
 url() { printf 'file://%s' "$(printf %s "$1" | sed "s/%/%25/g; s/ /%20/g; s/#/%23/g; s/?/%3F/g")"; }
-command -v pkgbuild >/dev/null 2>&1 && command -v productbuild >/dev/null 2>&1 && command -v pkgutil >/dev/null 2>&1 || exit 77
+command -v pkgbuild >/dev/null 2>&1 && command -v productbuild >/dev/null 2>&1 && command -v pkgutil >/dev/null 2>&1 \
+  || { echo "SKIP: no pkgbuild, productbuild or pkgutil, so fetch-drydock.sh and build-pkg.sh are not tested" >&2; exit 77; }
 rel="$H/rel/v0.1.0"
 mkdir -p "$rel"
 comp() { pkgbuild --root "$H/$1" --identifier "$2" --version 1 --install-location / "$H/$3" >/dev/null 2>&1; }
@@ -109,24 +131,3 @@ rc=0; out="$(sh "$PK/fetch-drydock.sh" 0.1.0 "$H/f6" 2>&1)" || rc=$?
 h_assert_eq "1" "$rc" "a pkg without the drydock component fails"
 h_assert_contains "$out" "dev.mavergreen.drydock" "the failure names the identifier"
 h_assert_eq "" "$(ls -A "$H/f6")" "nothing left in OUTDIR without the component"
-
-if [ -x /usr/bin/python2.7 ]; then PY=/usr/bin/python2.7
-elif command -v python3 >/dev/null 2>&1; then PY=python3
-else PY=""; fi
-if [ -n "$PY" ]; then
-  rc=0
-  out="$("$PY" - "$H_REPO/.github/renovate.json" 2>&1 <<'PYEOF'
-import json, sys
-c = json.load(open(sys.argv[1]))
-m = [x for x in c["customManagers"] if x.get("depNameTemplate") == "Mavergreen/drydock"]
-assert len(m) == 1, "no single drydock manager"
-m = m[0]
-assert m["managerFilePatterns"] == ["/^components/drydock/version$/"], m["managerFilePatterns"]
-assert m["datasourceTemplate"] == "github-releases"
-assert m["extractVersionTemplate"] == "^v(?<version>.+)$"
-PYEOF
-)" || rc=$?
-  h_assert_eq "0" "$rc" "renovate.json parses and its drydock manager is right: $out"
-else
-  echo "SKIP: no python, so .github/renovate.json's drydock manager is not checked" >&2
-fi
