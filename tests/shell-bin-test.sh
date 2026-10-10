@@ -65,3 +65,13 @@ same paste "a${NL}b${NL}" "a${NL}b${NL}rc=0" "no options and no file reads stdin
 printf '1\n2\n' > p1
 same paste "x${NL}y${NL}" "1	x${NL}2	y${NL}rc=0" "file operands pass through" p1 -
 same paste "" "1,2${NL}rc=0" "-s -d, FILE passes through" -s -d, p1
+
+# --- xargs
+platform xargs "Mac OS X 10.9's xargs has no -r; it already skips the command when input is empty"
+same xargs "" "rc=0" "-r with empty input runs nothing" -r echo RAN
+same xargs "a b${NL}" "RAN a b${NL}rc=0" "-r with input runs the command" -r echo RAN
+same xargs "" "rc=0" "--no-run-if-empty with empty input runs nothing" --no-run-if-empty echo RAN
+same xargs "a b${NL}" "RAN a${NL}RAN b${NL}rc=0" "-r combines with -n 1" -r -n 1 echo RAN
+same xargs "a b${NL}" "RAN a${NL}RAN b${NL}rc=0" "-rn1 combines" -rn1 echo RAN
+same xargs "a${NL}" "-r a${NL}rc=0" "an -r after the command is the command's" echo -r
+same xargs "a${NL}" "a${NL}rc=0" "no options passes through" echo

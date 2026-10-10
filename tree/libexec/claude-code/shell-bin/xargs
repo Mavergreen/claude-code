@@ -1,0 +1,39 @@
+#!/bin/sh
+# platform: macOS-only -- Mac OS X 10.9's xargs has no -r; it already skips the command when input is empty
+#   so -r and --no-run-if-empty are dropped, up to the command, and everything else goes to /usr/bin/xargs.
+__cc_n=$#
+__cc_i=0
+__cc_opts=1
+while [ "$__cc_i" -lt "$__cc_n" ]; do
+  __cc_a=$1; shift; __cc_i=$((__cc_i+1))
+  if [ "$__cc_opts" -eq 1 ]; then
+    case "$__cc_a" in
+      --no-run-if-empty) continue ;;
+      --) __cc_opts=0 ;;
+      -[EIJLnPRs])
+        set -- "$@" "$__cc_a"
+        if [ "$__cc_i" -lt "$__cc_n" ]; then set -- "$@" "$1"; shift; __cc_i=$((__cc_i+1)); fi
+        continue ;;
+      -?*)
+        __cc_rest=${__cc_a#-} __cc_kept=-
+        while [ -n "$__cc_rest" ]; do
+          __cc_c=${__cc_rest%"${__cc_rest#?}"}; __cc_rest=${__cc_rest#?}
+          case "$__cc_c" in
+            r) ;;
+            [EIJLnPRs]) __cc_kept=$__cc_kept$__cc_c$__cc_rest; break ;;
+            *) __cc_kept=$__cc_kept$__cc_c ;;
+          esac
+        done
+        [ "$__cc_kept" != - ] || continue
+        set -- "$@" "$__cc_kept"
+        case "$__cc_kept" in
+          *[EIJLnPRs])
+            if [ "$__cc_i" -lt "$__cc_n" ]; then set -- "$@" "$1"; shift; __cc_i=$((__cc_i+1)); fi ;;
+        esac
+        continue ;;
+      *) __cc_opts=0 ;;
+    esac
+  fi
+  set -- "$@" "$__cc_a"
+done
+exec /usr/bin/xargs "$@"
