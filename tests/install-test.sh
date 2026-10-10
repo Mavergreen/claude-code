@@ -135,6 +135,13 @@ h_assert_contains "$out" "could not read this Mac's CPU features" "unreadable fe
 case "$out" in *"no AVX"*) h_assert_eq "no AVX message" "$out" "unreadable features are not reported as no AVX" ;; esac
 h_assert_eq "" "$log" "unreadable CPU features run nothing"
 
+fresh
+mkdir -p "$MAVERGREEN_INSTALL_ROOT/usr/local/mavergreen/avxemu" "$MAVERGREEN_INSTALL_ROOT/usr/local/mavergreen/icu"
+: > "$MAVERGREEN_INSTALL_ROOT/usr/local/mavergreen/avxemu/mavergreen.plist"
+/usr/libexec/PlistBuddy -c "Add :name string icu" "$MAVERGREEN_INSTALL_ROOT/usr/local/mavergreen/icu/mavergreen.plist" >/dev/null
+run
+h_assert_eq 0 "$rc" "an empty or versionless manifest does not stop the install: $out"
+h_assert_eq "$ALL" "$log" "an empty or versionless manifest counts as not installed"
 
 cat > "$H/bin/curl" <<'CURL'
 #!/bin/sh
