@@ -37,3 +37,13 @@ printf 'not a package\n' > "$H/bad.pkg"
 rc=0; err="$(sh "$X" "$H/bad.pkg" com.example-comp "$H/dest" 2>&1)" || rc=$?
 h_assert_eq 1 "$rc" "a file that is not a package fails"
 h_assert_contains "$err" "extract-component: cannot expand $H/bad.pkg" "and says it cannot expand it"
+
+pkgutil --expand "$H/c.pkg" "$H/cx"
+printf 'not a cpio archive\n' | gzip -c > "$H/cx/Payload"
+pkgutil --flatten "$H/cx" "$H/badpayload.pkg"
+mkdir "$H/dest2"
+rc=0; err="$(sh "$X" "$H/badpayload.pkg" com.example-comp "$H/dest2" 2>&1)" || rc=$?
+h_assert_eq 1 "$rc" "a payload cpio cannot read fails"
+h_assert_contains "$err" "extract-component: cannot unpack component com.example-comp: cpio: " "and says why, in cpio's own words"
+rc=0; err="$(sh "$X" "$H/c.pkg" com.example-comp "$H/dest2" 2>&1)" || rc=$?
+h_assert_eq "" "$err" "a payload that unpacks prints nothing, not cpio's block count"

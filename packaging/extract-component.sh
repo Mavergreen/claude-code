@@ -3,7 +3,8 @@
 #   usage: extract-component.sh PKG IDENTIFIER DESTDIR
 #          Expands PKG (flat or product archive), selects the component whose PackageInfo declares
 #          identifier IDENTIFIER, and unpacks its gzip+cpio Payload into the existing directory DESTDIR.
-#          Exits 1, naming IDENTIFIER, when PKG has no such component or the component has no payload.
+#          Exits 1, naming IDENTIFIER, when PKG has no such component, the component has no payload,
+#          or cpio cannot unpack it (with cpio's message).
 set -eu
 [ $# -eq 3 ] || { echo "usage: extract-component.sh PKG IDENTIFIER DESTDIR" >&2; exit 2; }
 pkg="$1"; id="$2"; dest="$3"
@@ -19,4 +20,5 @@ while IFS= read -r info; do
 done < "$work/infos"
 [ -n "$comp" ] || { echo "extract-component: $pkg has no component $id" >&2; exit 1; }
 [ -f "$comp/Payload" ] || { echo "extract-component: component $id has no payload" >&2; exit 1; }
-(cd "$dest" && gzip -dc < "$comp/Payload" | cpio -idm 2>/dev/null)
+err="$(cd "$dest" && gzip -dc < "$comp/Payload" | cpio -idm 2>&1)" \
+  || { echo "extract-component: cannot unpack component $id: $err" >&2; exit 1; }
