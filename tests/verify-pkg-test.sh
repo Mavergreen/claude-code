@@ -18,6 +18,7 @@ mk() {
   printf '#!/usr/bin/python\n' > "$t/share/claude-code/computer-use/mcp_server.py"; chmod +x "$t/share/claude-code/computer-use/mcp_server.py"
   : > "$t/share/claude-code/claude-env.sh"
   for _f in mktemp timeout env setsid; do printf '#!/bin/sh\n' > "$t/libexec/claude-code/shell-bin/$_f"; chmod +x "$t/libexec/claude-code/shell-bin/$_f"; done
+  printf '#!/bin/sh\n' > "$t/libexec/claude-code/prepare"; chmod +x "$t/libexec/claude-code/prepare"
   : > "$r/Library/Application Support/Mavergreen/claude-code-updater.app/Info.plist"
 }
 comp() { pkgbuild --root "$H/$1" --identifier "$2" --version 1 --install-location / "$H/$3" >/dev/null 2>&1; }
@@ -39,6 +40,14 @@ for f in mktemp timeout env setsid; do
   h_assert_eq "1" "$rc" "a payload without shell-bin/$f fails"
   h_assert_contains "$out" "libexec/claude-code/shell-bin/$f" "the failure names shell-bin/$f"
 done
+mk noprepare; rm "$H/noprepare/usr/local/mavergreen/claude-code/libexec/claude-code/prepare"; build noprepare
+rc=0; out="$(sh "$VP" "$H/noprepare.pkg" "$H/dd" 2>&1)" || rc=$?
+h_assert_eq "1" "$rc" "a payload without libexec/claude-code/prepare fails"
+h_assert_contains "$out" "libexec/claude-code/prepare" "the failure names prepare"
+mk noxprepare; chmod -x "$H/noxprepare/usr/local/mavergreen/claude-code/libexec/claude-code/prepare"; build noxprepare
+rc=0; out="$(sh "$VP" "$H/noxprepare.pkg" "$H/dd" 2>&1)" || rc=$?
+h_assert_eq "1" "$rc" "a payload whose prepare is not executable fails"
+h_assert_contains "$out" "prepare is not executable" "the failure says prepare is not executable"
 mk noxenv; chmod -x "$H/noxenv/usr/local/mavergreen/claude-code/libexec/claude-code/shell-bin/env"; build noxenv
 rc=0; out="$(sh "$VP" "$H/noxenv.pkg" "$H/dd" 2>&1)" || rc=$?
 h_assert_eq "1" "$rc" "a payload whose shell-bin/env is not executable fails"

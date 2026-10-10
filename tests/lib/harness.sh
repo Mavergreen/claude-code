@@ -109,6 +109,7 @@ if [ -f "$H/drydock-barrier" ]; then
   n=0
   while [ "$(wc -l < "$H/drydock.log" | tr -d ' ')" -lt 2 ] && [ "$n" -lt 10 ]; do sleep 1; n=$((n+1)); done
 fi
+[ ! -f "$H/drydock-slow" ] || sleep "$(cat "$H/drydock-slow")"
 if [ -f "$H/drydock-refuses" ] && grep -qx "$(basename "$in")" "$H/drydock-refuses"; then
   exit 3
 fi

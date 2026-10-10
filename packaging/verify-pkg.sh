@@ -21,6 +21,7 @@ needx() { need "$1"; [ -x "$1" ] || { echo "verify-pkg: ${1#"$root"/} is not exe
 needx "$t/bin/claude"
 for f in recipe recipe-id requires settings.json mcp-config.json claude-env.sh; do need "$t/share/claude-code/$f"; done
 for f in mktemp timeout env setsid; do needx "$t/libexec/claude-code/shell-bin/$f"; done
+needx "$t/libexec/claude-code/prepare"
 needx "$t/share/claude-code/computer-use/mcp_server.py"
 need "$t/libexec/drydock-macho-rewrite"
 need "$t/libexec/mavergreen/pre-uninstall"

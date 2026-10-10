@@ -1,3 +1,8 @@
 {
-  "permissions": { "allow": ["mcp__computer-use-mavericks"] }
+  "permissions": { "allow": ["mcp__computer-use-mavericks"] },
+  "hooks": {
+    "SessionEnd": [
+      { "hooks": [{ "type": "command", "command": "/usr/local/mavergreen/claude-code/libexec/claude-code/prepare" }] }
+    ]
+  }
 }

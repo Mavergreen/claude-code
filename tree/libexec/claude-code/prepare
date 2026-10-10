@@ -1,0 +1,20 @@
+#!/bin/sh
+# platform: macOS-only -- patches Claude Code for Mac OS X 10.9 after its updater downloads a new version, so the next launch need not
+#   usage: prepare          start "prepare --now" in a session of its own, niced and with no output, and return at once
+#          prepare --now    patch the version the next launch would pick, unless updates are held
+#          Claude Code's SessionEnd hook runs it (see share/claude-code/settings.json). The launcher still
+#          patches whatever this misses.
+
+_cc_x="$(CDPATH= cd -P "$(dirname "$0")" && pwd -P)" || exit 1
+if [ "${1-}" != --now ]; then
+  exec "$_cc_x/shell-bin/setsid" -f /usr/bin/nice -n 10 "$_cc_x/prepare" --now </dev/null >/dev/null 2>&1
+fi
+for _cc_m in lib fetch select patch; do
+  . "$_cc_x/$_cc_m.sh" || exit 1
+done
+cc_init "$_cc_x/../../bin/claude"
+cc_held && exit 0
+V="$(cc_usual)"
+[ -n "$V" ] || exit 0
+cc_recipe_key >/dev/null || exit 1
+cc_build "$V"
