@@ -129,6 +129,20 @@ ENVX="UID=5"
 envcase "" 1 "-u UID unsets UID quietly" -u UID printenv UID
 ENVX=""
 envcase "" 1 "-u UID with no UID in the environment is quiet" -u UID printenv UID
+ENVX="a.b=1 1z=2"
+envcase "" 1 "-u a.b unsets a name sh cannot" -u a.b printenv a.b
+envcase "2" 0 "-u a.b leaves 1z" -u a.b printenv 1z
+envcase "" 1 "-u 1z unsets a name sh cannot" -u 1z printenv 1z
+ENVX=""
+for impl in "$SB/env" "$GENV"; do
+  [ -x "$impl" ] || continue
+  h_assert_eq "x${NL}Q=z${NL}|1" "$(/usr/bin/env "M=x${NL}Q=z" a.b=1 "$impl" -u a.b printenv M; /usr/bin/env "M=x${NL}Q=z" a.b=1 "$impl" -u a.b printenv Q || echo "|$?")" "$impl -u a.b keeps a multi-line value whole"
+  for bad in "" "a=b"; do
+    envrun "$impl" -u "$bad" true
+    h_assert_eq "125" "$_rc" "$impl -u '$bad' fails as GNU env does"
+    h_assert_contains "$_out" "cannot unset" "$impl -u '$bad' says it cannot unset"
+  done
+done
 ENVX="OLDPWD=/x PWD=/y _=/z"
 for v in OLDPWD:/x PWD:/y _:/z; do
   envcase "${v#*:}" 0 "${v%%:*} passes through as it came" printenv "${v%%:*}"

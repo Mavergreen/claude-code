@@ -17,7 +17,7 @@ while (@ARGV) {
     elsif ($a =~ /^-u(.+)$/s)       { $name = $1; shift @ARGV }
     elsif ($a eq '-i' || $a eq '-') { $clear = 1; shift @ARGV; next }
     else                            { last }
-    if ($name !~ /^[A-Za-z_][A-Za-z0-9_]*\z/) { print STDERR "env: cannot unset '$name': Invalid argument\n"; exit 125 }
+    if ($name eq '' || $name =~ /=/) { print STDERR "env: cannot unset '$name': Invalid argument\n"; exit 125 }
     push @unset, $name;
 }
 if ($clear) { %ENV = () } else { delete @ENV{@unset} }
