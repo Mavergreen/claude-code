@@ -3,15 +3,15 @@
 
 cc_predates_launcher() { cc_ver_gt 2.1.207 "$1"; }
 
+cc_refuse_predating() {
+  [ "${1-}" = install ] && cc_is_version "${2-}" && cc_predates_launcher "$2" || return 0
+  cc_die "Claude Code $2 predates 2.1.207, the first version that runs under this launcher; not installing it"
+}
+
 cc_record_intent() {
   case "${1-}" in
     update) mkdir -p "$CC_STATE" && printf 'update\n' > "$CC_STATE/repick" ;;
-    install)
-      if cc_is_version "${2-}" && cc_predates_launcher "$2"; then
-        cc_note "Claude Code $2 predates 2.1.207, the first version that runs under this launcher; not switching to it"
-        return 0
-      fi
-      mkdir -p "$CC_STATE" && printf 'install%s\n' "${2:+ $2}" > "$CC_STATE/repick" ;;
+    install) mkdir -p "$CC_STATE" && printf 'install%s\n' "${2:+ $2}" > "$CC_STATE/repick" ;;
   esac
   return 0
 }

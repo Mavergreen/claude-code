@@ -35,6 +35,7 @@ while read -r _cc_short _cc_url || [ -n "$_cc_short" ]; do
   [ -f "$CC_MG/$_cc_short/mavergreen.plist" ] || cc_die "$_cc_short is not installed; get it from $_cc_url"
 done < "$CC_TREE/share/claude-code/requires"
 
+cc_refuse_predating "$@"
 cc_takeover || :
 cc_claim_link || :
 V=$(cc_choose) || { cc_record_intent "$@"; exit 1; }

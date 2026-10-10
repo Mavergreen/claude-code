@@ -274,3 +274,14 @@ h_assert_contains "$out" "could not fetch Claude Code 2.1.290 for the stable cha
 runs "$out" 2.1.289 "and the launch runs the newest installed version"
 h_assert_fails test -e "$ST/repick"
 runs "$(nohold x 2>&1 || :)" 2.1.289 "the next launch runs too"
+
+rm -rf "$ST"
+out="$(nohold install 2.1.206 2>&1 || echo "exit:$?")"
+h_assert_contains "$out" "Claude Code 2.1.206 predates 2.1.207" "install of a version before 2.1.207 is refused, saying why, instead of Claude Code reporting an install the launcher will not run"
+h_assert_contains "$out" "exit:1" "that refusal exits 1"
+case "$out" in *fake-claude*) h_assert_eq "Claude Code not run" "$out" "a refused install does not run Claude Code" ;; esac
+h_assert_fails test -e "$ST/repick"
+runs "$(nohold install 2.1.289 2>&1 || :)" 2.1.289 "install of a supported version still runs Claude Code's install"
+h_assert_eq "install 2.1.289" "$(cat "$ST/repick" 2>/dev/null || :)" "and records it"
+runs "$(nohold install stable 2>&1 || :)" 2.1.289 "install of a channel still runs Claude Code's install"
+h_assert_eq "install stable" "$(cat "$ST/repick" 2>/dev/null || :)" "and records it"

@@ -160,9 +160,12 @@ mkv 2.1.206
 h_assert_eq "2.1.289" "$(cc_choose 2>/dev/null)" "a version before 2.1.207 is never chosen: bootstrap instead"
 printf '2.1.206\n' > "$CC_STATE/current"
 h_assert_eq "2.1.289" "$(DISABLE_AUTOUPDATER=1 cc_choose)" "a held current before 2.1.207 is not honoured"
-out="$(cc_record_intent install 2.1.206 2>&1)"
-h_assert_contains "$out" "Claude Code 2.1.206 predates 2.1.207" "an install before 2.1.207 says why it is not honoured"
-h_assert_fails test -e "$CC_STATE/repick"
+rc=0; out="$( (cc_refuse_predating install 2.1.206) 2>&1)" || rc=$?
+h_assert_eq "1" "$rc" "an install before 2.1.207 is refused"
+h_assert_contains "$out" "Claude Code 2.1.206 predates 2.1.207" "and says why"
+for a in "install 2.1.207" "install stable" "install" "mcp 2.1.206"; do
+  h_assert_ok cc_refuse_predating $a
+done
 printf 'install 2.1.206\n' > "$CC_STATE/repick"
 h_assert_eq "2.1.289" "$(cc_choose)" "a recorded install before 2.1.207 is not honoured"
 mkv 2.1.207
