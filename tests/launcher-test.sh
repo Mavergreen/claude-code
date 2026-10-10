@@ -19,7 +19,7 @@ run() { "$HOME/.local/bin/claude" "$@" 2>&1 || echo "exit:$?"; }
 args() { printf '%s\n' "$1" | grep '^arg:' || :; }
 out="$("$MG/bin/claude" mcp list 2>&1 || echo "exit:$?")"
 h_assert_eq "$(readlink "$HOME/.local/bin/claude")" "$MG/bin/claude" "launch claimed the link"
-h_assert_eq "no" "$([ -e "$HOME/.local/share/claude-mavericks" ] && echo yes || echo no)" "launch ran takeover"
+h_assert_absent "$HOME/.local/share/claude-mavericks" "launch ran takeover"
 want="$(printf 'arg:--allowedTools=Grep\narg:--settings=%s\narg:--mcp-config=%s\narg:mcp\narg:list' "$TREE/share/claude-code/settings.json" "$TREE/share/claude-code/mcp-config.json")"
 h_assert_eq "$want" "$(args "$out")" "argv exactly, order and count"
 out="$(run mcp list)"
@@ -227,7 +227,7 @@ h_assert_contains "$out" "fake-claude 2.1.280" "fallback runs the cached older e
 h_assert_ok test -e "$V/2.1.280"
 h_assert_ok test -e "$HOME/Library/Caches/dev.mavergreen.claude-code/2.1.280-$(cut -c1-16 "$TREE/share/claude-code/recipe-id")/claude"
 h_assert_ok test -e "$V/2.1.289"
-h_assert_fails test -e "$V/2.1.285"
+h_assert_absent "$V/2.1.285" "a fallback launch prunes the versions between the one it runs and the one drydock refused"
 
 ST="$HOME/Library/Application Support/dev.mavergreen.claude-code"
 rm -rf "$V" "$HOME/Library/Caches/dev.mavergreen.claude-code" "$ST"
@@ -282,7 +282,7 @@ out="$(nohold install 2.1.206 2>&1 || echo "exit:$?")"
 h_assert_contains "$out" "Claude Code 2.1.206 predates 2.1.207" "install of a version before 2.1.207 is refused, saying why, instead of Claude Code reporting an install the launcher will not run"
 h_assert_contains "$out" "exit:1" "that refusal exits 1"
 case "$out" in *fake-claude*) h_assert_eq "Claude Code not run" "$out" "a refused install does not run Claude Code" ;; esac
-h_assert_fails test -e "$ST/repick"
+h_assert_absent "$ST/repick" "a refused install records no intent"
 runs "$(nohold install 2.1.289 2>&1 || :)" 2.1.289 "install of a supported version still runs Claude Code's install"
 h_assert_eq "install 2.1.289" "$(cat "$ST/repick" 2>/dev/null || :)" "and records it"
 runs "$(nohold install stable 2>&1 || :)" 2.1.289 "install of a channel still runs Claude Code's install"

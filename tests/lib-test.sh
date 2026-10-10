@@ -76,7 +76,7 @@ h_assert_eq 1 "$(wc -l < "$H/drydock.log" | tr -d ' ')" "drydock log"
 echo sum > "$H/drydock-refuses"
 rc=0; printf 'x\n' | "$T/libexec/drydock-macho-rewrite" "$H/sum" "$H/sum.out2" || rc=$?
 h_assert_eq 3 "$rc" "drydock refuses"
-h_assert_eq "no" "$([ -e "$H/sum.out2" ] && echo yes || echo no)" "refused writes nothing"
+h_assert_absent "$H/sum.out2" "refused writes nothing"
 h_assert_contains "$(sysctl -n machdep.cpu.features)" " AVX1.0 " "fake sysctl features"
 h_assert_contains "$(sysctl -n machdep.cpu.leaf7_features)" " AVX2 " "fake sysctl leaf7"
 

@@ -19,7 +19,7 @@ got="$(cc_manifest_sum 2.1.289)"
 h_assert_eq "$want_x64" "$got" "manifest sum is darwin-x64's"
 h_assert_eq "no" "$([ "$got" = "$want_arm64" ] && echo yes || echo no)" "manifest sum is not darwin-arm64's"
 
-h_assert_eq "no" "$([ -e "$CC_VERSIONS" ] && echo yes || echo no)" "versions dir absent before fetch"
+h_assert_absent "$CC_VERSIONS" "versions dir absent before fetch"
 h_assert_ok cc_fetch 2.1.289
 h_assert_ok test -x "$CC_VERSIONS/2.1.289"
 h_assert_eq "$want_x64" "$(cc_sha256 "$CC_VERSIONS/2.1.289")" "fetched file is the CDN binary"
@@ -37,7 +37,7 @@ printf '# changed after manifest\n' >> "$H/cdn/2.1.290/darwin-x64/claude"
 rc=0; out="$(cc_fetch 2.1.290 2>&1)" || rc=$?
 h_assert_eq "1" "$rc" "cc_fetch fails on mismatch"
 h_assert_contains "$out" "Claude Code 2.1.290 failed its checksum (expected " "mismatch message"
-h_assert_eq "no" "$([ -e "$CC_VERSIONS/2.1.290" ] && echo yes || echo no)" "no binary on mismatch"
+h_assert_absent "$CC_VERSIONS/2.1.290" "no binary on mismatch"
 h_assert_eq "" "$(ls "$CC_VERSIONS" | grep 'mavergreen-dl' || true)" "no temp file after mismatch"
 
 mkdir -p "$H/cdn/2.1.291/darwin-x64"
@@ -48,14 +48,14 @@ h_assert_eq "1" "$rc" "no darwin-x64 block: no sum"
 rc=0; out="$(cc_fetch 2.1.291 2>&1)" || rc=$?
 h_assert_contains "$out" "could not read the checksum for Claude Code 2.1.291" "no-checksum message"
 h_assert_eq "1" "$rc" "cc_fetch fails without a darwin-x64 checksum"
-h_assert_eq "no" "$([ -e "$CC_VERSIONS/2.1.291" ] && echo yes || echo no)" "no binary without checksum"
+h_assert_absent "$CC_VERSIONS/2.1.291" "no binary without checksum"
 
 h_cdn_publish 2.1.292
 rm "$H/cdn/2.1.292/darwin-x64/claude"
 rc=0; out="$(cc_fetch 2.1.292 2>&1)" || rc=$?
 h_assert_eq "1" "$rc" "cc_fetch fails when the binary is missing from the CDN"
 h_assert_contains "$out" "could not download Claude Code 2.1.292" "download failure message"
-h_assert_eq "no" "$([ -e "$CC_VERSIONS/2.1.292" ] && echo yes || echo no)" "no binary on download failure"
+h_assert_absent "$CC_VERSIONS/2.1.292" "no binary on download failure"
 h_assert_eq "" "$(ls "$CC_VERSIONS" | grep 'mavergreen-dl' || true)" "no temp file after download failure"
 
 h_cdn_publish 2.1.293

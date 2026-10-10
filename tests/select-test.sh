@@ -39,7 +39,7 @@ printf '2.1.288\n' > "$CC_STATE/current"
 cc_record_intent update
 h_assert_eq "update" "$(cat "$CC_STATE/repick")" "update intent recorded"
 h_assert_eq "2.1.289" "$(DISABLE_AUTOUPDATER=1 cc_choose)" "update beats hold"
-h_assert_eq "no" "$([ -e "$CC_STATE/repick" ] && echo yes || echo no)" "marker is gone"
+h_assert_absent "$CC_STATE/repick" "marker is gone"
 
 cc_record_intent install 2.1.288
 h_assert_eq "install 2.1.288" "$(cat "$CC_STATE/repick")" "install intent recorded"
@@ -53,7 +53,7 @@ h_assert_eq "install" "$(cat "$CC_STATE/repick")" "bare install recorded"
 h_assert_eq "2.1.289" "$(cc_choose)" "bare install: newest"
 
 cc_record_intent mcp list
-h_assert_eq "no" "$([ -e "$CC_STATE/repick" ] && echo yes || echo no)" "other commands write nothing"
+h_assert_absent "$CC_STATE/repick" "other commands write nothing"
 
 h_fake_curl
 h_cdn_publish 2.1.287

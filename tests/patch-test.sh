@@ -121,7 +121,7 @@ mkdir -p "$(dirname "$(cc_entry 2.1.289)")"
 touch -t 200001010000 "$(dirname "$(cc_entry 2.1.289)")/claude.1.STALE0"
 touch "$(dirname "$(cc_entry 2.1.289)")/claude.2.FRESH0"
 cc_build 2.1.289
-h_assert_eq "no" "$([ -e "$(dirname "$(cc_entry 2.1.289)")/claude.1.STALE0" ] && echo yes || echo no)" "stale temp file is removed"
+h_assert_absent "$(dirname "$(cc_entry 2.1.289)")/claude.1.STALE0" "stale temp file is removed"
 h_assert_ok test -f "$(dirname "$(cc_entry 2.1.289)")/claude.2.FRESH0"
 rm -f "$(dirname "$(cc_entry 2.1.289)")/claude.2.FRESH0"
 
@@ -140,7 +140,7 @@ h_assert_contains "$ERR" "recipe-id" "missing recipe-id dies"
 : > "$CC_TREE/share/claude-code/recipe-id"
 ERR="$( (cc_runnable 2.1.289 2>&1 >/dev/null) || true)"
 h_assert_contains "$ERR" "recipe-id" "empty recipe-id dies"
-h_assert_eq "no" "$([ -e "$CC_CACHE" ] && echo yes || echo no)" "no cache entry without a recipe id"
+h_assert_absent "$CC_CACHE" "no cache entry without a recipe id"
 mv "$H/recipe-id.save" "$CC_TREE/share/claude-code/recipe-id"
 
 KEY="$(cut -c1-16 "$CC_TREE/share/claude-code/recipe-id")"
