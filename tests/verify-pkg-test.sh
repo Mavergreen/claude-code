@@ -76,3 +76,4 @@ productbuild --package "$H/base.pkg" --package "$H/other.pkg" "$H/noprod.pkg" >/
 rc=0; out="$(sh "$VP" "$H/noprod.pkg" "$H/dd" 2>&1)" || rc=$?
 h_assert_eq "1" "$rc" "a product archive without the claude-code component fails"
 h_assert_contains "$out" "dev.mavergreen.claude-code" "the failure names the identifier"
+h_assert_eq "verify-pkg: extract-component: $H/noprod.pkg has no component dev.mavergreen.claude-code" "$out" "the failure says verify-pkg found it, through extract-component"

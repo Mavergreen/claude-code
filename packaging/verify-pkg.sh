@@ -14,7 +14,7 @@ trap 'rm -rf "$work"' EXIT
 id=dev.mavergreen.claude-code
 root="$work/root"
 mkdir "$root"
-sh "$(dirname "$0")/extract-component.sh" "$pkg" "$id" "$root"
+err="$(sh "$(dirname "$0")/extract-component.sh" "$pkg" "$id" "$root" 2>&1)" || { echo "verify-pkg: $err" >&2; exit 1; }
 t="$root/usr/local/mavergreen/claude-code"
 need() { [ -e "$1" ] || { echo "verify-pkg: payload lacks ${1#"$root"/}" >&2; exit 1; }; }
 needx() { need "$1"; [ -x "$1" ] || { echo "verify-pkg: ${1#"$root"/} is not executable" >&2; exit 1; }; }
