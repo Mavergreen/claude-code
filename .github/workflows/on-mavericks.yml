@@ -1,0 +1,63 @@
+name: on-mavericks
+
+# spec: tests/e2e/run.sh -- the launcher, installed the way a user installs it, driven on a real
+#       10.9.5 guest (Mavergreen/mavericks-vm) whose CPU reports AVX but not AVX2, so the patched
+#       Claude Code runs through avxemu. A skip (77) fails here: this job exists so that it runs.
+# platform: under KVM the guest is only TOLD there is no AVX2; the runner's CPU still executes AVX2,
+#       so this catches avxemu emulating wrongly (the 2026-08 spin) but not a site it misses.
+on:
+  workflow_call:
+    inputs:
+      artifact:
+        description: A claude-code artifact of the calling run, whose .pkg is installed over the latest release; empty tests the latest release itself
+        type: string
+        default: ''
+    secrets:
+      MAVERICKS_VM_KEY:
+        required: false
+      ANTHROPIC_API_KEY:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: e2e on Mac OS X 10.9, AVX2 hidden (mavericks-vm)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - if: inputs.artifact != ''
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.artifact }}
+          path: dist
+      - uses: Mavergreen/mavericks-vm@v1
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CC_E2E_REAL_ACCOUNT: '1'
+          WANT_PKG: ${{ inputs.artifact != '' && 'yes' || 'no' }}
+        with:
+          image-key: ${{ secrets.MAVERICKS_VM_KEY }}
+          cpu-isa: avx
+          copyback: false
+          debug-on-error: true
+          envs: 'ANTHROPIC_API_KEY CC_E2E_REAL_ACCOUNT WANT_PKG'
+          run: |
+            f="$(sysctl -n machdep.cpu.features machdep.cpu.leaf7_features | tr '\n' ' ')"
+            case " $f " in *" AVX2 "*) echo "the guest reports AVX2 ($f); this job exists to hide it"; exit 1 ;; esac
+            case " $f " in *" AVX1.0 "*) ;; *) echo "the guest reports no AVX ($f); the launcher needs it"; exit 1 ;; esac
+            sh packaging/install.sh
+            if [ "$WANT_PKG" = yes ]; then
+              set -- dist/claude-code-*.pkg
+              [ "$#" -eq 1 ] && [ -f "$1" ] || { echo "expected one claude-code .pkg in the artifact, found: $*"; exit 1; }
+              sudo /usr/sbin/installer -pkg "$1" -target /
+            fi
+            status=0; sh tests/e2e/run.sh || status=$?
+            [ "$status" -eq 0 ] || { echo "tests/e2e/run.sh exited $status (77 is a skip, a failure here)"; exit 1; }
