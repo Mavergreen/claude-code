@@ -173,4 +173,19 @@ h_assert_contains "$out" "HOME must be an absolute path" "empty HOME message"
 out="$(HOME="rel/home" cc_init "$CC_TREE/bin/claude" 2>&1)" && h_assert_eq "failure" "success" "relative HOME refused"
 h_assert_contains "$out" "HOME must be an absolute path (it is 'rel/home')" "relative HOME message"
 out="$(HOME="/" cc_init "$CC_TREE/bin/claude" 2>&1)" && h_assert_eq "failure" "success" "root HOME refused"
+
+rm -rf "$CC_STATE" "$HOME/.local/share/claude-mavericks" "$HOME/.cache/claude-mavericks"
+: > "$CC_MG/var/claude-code/removed-mavericks-forever"
+rm -f "$D/S.dylib" "$D/versions/I.dylib"
+ln -s /nowhere "$D/S.dylib"
+: > "$D/versions/2.1.300.mf-tmp.7"
+mkdir -p "$HOME/.local/share/claude-mavericks/lib"
+printf '#!/bin/sh\nprintf "%%s\\n" "$*" >> "$H/rm.log"\nexec /bin/rm "$@"\n' > "$H/bin/rm"; chmod +x "$H/bin/rm"; hash -r
+cc_takeover 2>/dev/null
+rm -f "$H/bin/rm"; hash -r
+h_assert_eq "-f $D/S.dylib" "$(grep -F "$D/S.dylib" "$H/rm.log")" "a symlink is removed with rm -f, never a recursive rm"
+h_assert_eq "-f $D/versions/2.1.300.mf-tmp.7" "$(grep -F "$D/versions/2.1.300.mf-tmp.7" "$H/rm.log")" "a file is removed with rm -f"
+h_assert_eq "-rf $HOME/.local/share/claude-mavericks" "$(grep -F "$HOME/.local/share/claude-mavericks" "$H/rm.log")" "only a directory is removed recursively"
+h_assert_absent "$D/S.dylib" "the symlink is gone"
+h_assert_absent "$HOME/.local/share/claude-mavericks" "the directory is gone"
 h_teardown

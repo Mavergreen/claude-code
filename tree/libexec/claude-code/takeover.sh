@@ -2,7 +2,9 @@
 # platform: macOS-only -- the launcher exists to run Claude Code on Mac OS X 10.9
 
 cc_take() {
-  if rm -rf "$1" 2>/dev/null; then
+  _cc_rmf=-f
+  if [ -d "$1" ] && [ ! -L "$1" ]; then _cc_rmf=-rf; fi
+  if rm "$_cc_rmf" "$1" 2>/dev/null; then
     _cc_gone="${_cc_gone}${_cc_gone:+
 }$1"
   else
