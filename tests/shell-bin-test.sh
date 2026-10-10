@@ -204,3 +204,39 @@ same date "" "1970-01-02${NL}rc=0" "-d @SECONDS" -u -d @86400 +%Y-%m-%d
 same date "" "1970-01-02${NL}rc=0" "--date=@SECONDS" -u --date=@86400 +%Y-%m-%d
 shim date "" "1970-01-02${NL}rc=0" "-r SECONDS, 10.9's own, is unchanged" -u -r 86400 +%Y-%m-%d
 shim date "" "date: nonexistent: No such file or directory${NL}rc=1" "-r with a missing file fails" -r nonexistent
+
+# --- sort
+platform sort "Mac OS X 10.9's sort is GNU coreutils 5.93, without -V or -h"
+LC_ALL=C; export LC_ALL
+same sort "1.10${NL}1.2${NL}1.9${NL}" "1.2${NL}1.9${NL}1.10${NL}rc=0" "-V orders version numbers" -V
+same sort "1.10${NL}1.2${NL}1.9${NL}" "1.2${NL}1.9${NL}1.10${NL}rc=0" "--version-sort" --version-sort
+same sort "1.10${NL}1.2${NL}1.9${NL}" "1.10${NL}1.9${NL}1.2${NL}rc=0" "-Vr reverses" -Vr
+same sort "v1.10.0${NL}v1.2.0-rc1${NL}v1.2.0${NL}" "v1.2.0${NL}v1.2.0-rc1${NL}v1.10.0${NL}rc=0" "-V: a release before its -rc suffix" -V
+same sort "1.0${NL}1.0~rc1${NL}0.9${NL}" "0.9${NL}1.0~rc1${NL}1.0${NL}rc=0" "-V: ~ sorts before the release" -V
+same sort "b${NL}.b${NL}a${NL}.a${NL}" ".a${NL}.b${NL}a${NL}b${NL}rc=0" "-V: hidden names first" -V
+same sort "foo-1.10.tar.gz${NL}foo-1.9.tar.gz${NL}foo-1.9.zip${NL}" "foo-1.9.tar.gz${NL}foo-1.9.zip${NL}foo-1.10.tar.gz${NL}rc=0" "-V: file suffixes compare last" -V
+same sort "a10${NL}a9${NL}a${NL}b1${NL}" "a${NL}a9${NL}a10${NL}b1${NL}rc=0" "-V: letters and numbers" -V
+same sort "cctools-1010.6${NL}cctools-986${NL}cctools-1009.2${NL}" "cctools-986${NL}cctools-1009.2${NL}cctools-1010.6${NL}rc=0" "-t- -k2 -V, as for git tags" -t- -k2 -V
+same sort "b 1.10${NL}a 1.9${NL}" "a 1.9${NL}b 1.10${NL}rc=0" "-k2,2V" -k2,2V
+same sort "b 1.10${NL}a 1.9${NL}" "a 1.9${NL}b 1.10${NL}rc=0" "-k 2,2V" -k 2,2V
+same sort "x 1.10 z${NL}x 1.9 a${NL}" "x 1.9 a${NL}x 1.10 z${NL}rc=0" "-k2,2V ignores the rest of the line" -k2,2V
+same sort "1.00${NL}1.0${NL}2${NL}" "1.00${NL}2${NL}rc=0" "-V -u keeps the first of equal versions" -V -u
+same sort "1.00${NL}1.0${NL}" "1.0${NL}1.00${NL}rc=0" "-V breaks ties on the whole line" -V
+same sort "b 1${NL}a 1${NL}" "b 1${NL}a 1${NL}rc=0" "-s -k2,2V keeps input order for ties" -s -k2,2V
+same sort "10K${NL}2M${NL}512${NL}1G${NL}" "512${NL}10K${NL}2M${NL}1G${NL}rc=0" "-h orders human sizes" -h
+same sort "10K${NL}2M${NL}512${NL}1G${NL}" "512${NL}10K${NL}2M${NL}1G${NL}rc=0" "--human-numeric-sort" --human-numeric-sort
+same sort "4.0K	foo${NL}1.5M	bar${NL}12K	baz${NL}" "4.0K	foo${NL}12K	baz${NL}1.5M	bar${NL}rc=0" "-h on du -sh output" -h
+same sort "4.0K	foo${NL}1.5M	bar${NL}12K	baz${NL}" "1.5M	bar${NL}12K	baz${NL}4.0K	foo${NL}rc=0" "-hr" -hr
+same sort "1${NL}-1K${NL}-2${NL}" "-1K${NL}-2${NL}1${NL}rc=0" "-h with negatives" -h
+same sort "x 2K${NL}y 1M${NL}z 3${NL}" "z 3${NL}x 2K${NL}y 1M${NL}rc=0" "-k2,2h" -k2,2h
+same sort "b,2,1.10${NL}a,1,1.9${NL}a,1,1.10${NL}" "a,1,1.9${NL}a,1,1.10${NL}b,2,1.10${NL}rc=0" "-t, -k1,1 -k3,3V: several keys" -t, -k1,1 -k3,3V
+same sort "B${NL}a${NL}1.2${NL}" "1.2${NL}a${NL}B${NL}rc=0" "-f -V" -f -V
+printf '1.10\n1.9\n' > s1
+same sort "" "rc=0" "-V -o FILE writes FILE" -V -o s2 s1
+h_assert_eq "1.9${NL}1.10" "$(cat s2)" "sort shim: -V -o FILE wrote FILE"
+same sort "" "1.9${NL}1.10${NL}rc=0" "-V FILE" -V s1
+same sort "1.10${NL}1.9" "1.9${NL}1.10${NL}rc=0" "-V ends a last line that had no newline" -V
+same sort "b${NL}a${NL}" "a${NL}b${NL}rc=0" "no -V or -h passes through"
+same sort "10${NL}9${NL}" "9${NL}10${NL}rc=0" "-n passes through" -n
+shim sort "" "sort: nonexistent: No such file or directory${NL}rc=2" "-V with a missing file fails" -V nonexistent
+unset LC_ALL

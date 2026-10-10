@@ -1,0 +1,248 @@
+#!/bin/sh
+# platform: macOS-only -- Mac OS X 10.9's sort is GNU coreutils 5.93, without -V or -h
+#   so a sort that asks for -V (version) or -h (human sizes), globally or in a -k key, is done here as GNU
+#   coreutils 9 does it, with -b -d -f -i -M -n -g -r -s -u -t -k -o -z; byte order stands in for the
+#   locale's collation. Any other sort is /usr/bin/sort.
+__cc_p=
+for __cc_a in "$@"; do
+  case "$__cc_p:$__cc_a" in
+    *:--) break ;;
+    -k:*[Vh]*|*:--key=*[Vh]*|*:--version-sort|*:--human-numeric-sort|*:--sort=*) exec /usr/bin/perl -x "$0" "$@" ;;
+    *:--*) ;;
+    *:-*[Vh]*) exec /usr/bin/perl -x "$0" "$@" ;;
+  esac
+  __cc_p=$__cc_a
+done
+exec /usr/bin/sort "$@"
+#!/usr/bin/perl
+use strict;
+use warnings;
+use sort 'stable';
+
+sub usage { print STDERR "sort: $_[0]\n"; exit 2 }
+
+my %long = ('ignore-leading-blanks' => 'b', 'dictionary-order' => 'd', 'ignore-case' => 'f',
+            'general-numeric-sort' => 'g', 'human-numeric-sort' => 'h', 'ignore-nonprinting' => 'i',
+            'month-sort' => 'M', 'numeric-sort' => 'n', reverse => 'r', 'version-sort' => 'V',
+            stable => 's', unique => 'u', 'zero-terminated' => 'z');
+my %sortword = (general => 'g', 'general-numeric' => 'g', human => 'h', 'human-numeric' => 'h',
+                month => 'M', numeric => 'n', version => 'V');
+my %g;
+my ($tab, $out, $stable, $unique, $eol) = (undef, undef, 0, 0, "\n");
+my (@keys, @files);
+my @args = @ARGV;
+while (@args) {
+    my $a = shift @args;
+    if ($a eq '--') { push @files, @args; last }
+    if ($a =~ /^--([a-z-]+)(?:=(.*))?$/) {
+        my ($name, $v) = ($1, $2);
+        if    ($name eq 'key')             { push @keys, keydef(defined $v ? $v : shift @args) }
+        elsif ($name eq 'field-separator') { $tab = defined $v ? $v : shift @args }
+        elsif ($name eq 'output')          { $out = defined $v ? $v : shift @args }
+        elsif ($name eq 'sort')            { $g{$sortword{$v // ''} // usage("invalid argument '" . ($v // '') . "' for '--sort'")} = 1 }
+        elsif ($name =~ /^(?:buffer-size|temporary-directory|parallel|batch-size|compress-program)$/) { shift @args unless defined $v }
+        elsif ($long{$name})               { set_flag($long{$name}) }
+        else                               { usage("unrecognized option '$a'") }
+    } elsif ($a =~ /^-(.+)$/ && $a ne '-') {
+        my @c = split //, $1;
+        while (defined(my $c = shift @c)) {
+            if ($c =~ /[ktoST]/) {
+                my $v = @c ? join('', splice @c) : shift @args;
+                defined $v or usage("option requires an argument -- '$c'");
+                if    ($c eq 'k') { push @keys, keydef($v) }
+                elsif ($c eq 't') { $tab = $v }
+                elsif ($c eq 'o') { $out = $v }
+            } elsif ($c =~ /[bdfghiMnrsuVz]/) {
+                set_flag($c);
+            } else {
+                usage("invalid option -- '$c'");
+            }
+        }
+    } else {
+        push @files, $a;
+    }
+}
+sub set_flag {
+    my ($c) = @_;
+    if    ($c eq 's') { $stable = 1 }
+    elsif ($c eq 'u') { $unique = 1 }
+    elsif ($c eq 'z') { $eol = "\0" }
+    elsif ($c eq 'b') { $g{sb} = $g{eb} = 1 }
+    else              { $g{$c} = 1 }
+}
+defined $tab && length $tab != 1 and usage("multi-character tab '$tab'");
+
+# -k F[.C][OPTS][,F[.C][OPTS]]: fields and characters count from 1; an end character of 0 is the field's end.
+sub keydef {
+    my ($spec) = @_;
+    $spec =~ /^(\d+)(?:\.(\d+))?([bdfghiMnrV]*)(?:,(\d+)(?:\.(\d+))?([bdfghiMnrV]*))?$/
+        or usage("invalid -k field specification: '$spec'");
+    my %k = (sf => $1 - 1, sc => defined $2 ? $2 - 1 : 0, ef => defined $4 ? $4 - 1 : undef, ec => $5 // 0);
+    ($1 > 0 && (!defined $4 || $4 > 0)) or usage("field number is zero: invalid field specification '$spec'");
+    for my $o (split(//, $3), split(//, $6 // '')) { $k{$o} = 1 }
+    $k{sb} = 1 if $3 =~ /b/;
+    $k{eb} = 1 if ($6 // '') =~ /b/;
+    delete $k{b};
+    return \%k;
+}
+
+my @ORDER = qw(sb eb d f g h i M n V);
+sub plain { my ($k) = @_; !grep { $k->{$_} } @ORDER }
+for my $k (@keys) {
+    if (plain($k) && !$k->{r}) { $k->{$_} = $g{$_} for @ORDER, 'r' }
+}
+@keys = ({ %g, sf => 0, sc => 0, ef => undef, ec => 0, whole => 1 }) unless @keys;
+
+sub blank { $_[0] eq ' ' || $_[0] eq "\t" }
+sub begfield {
+    my ($l, $k) = @_;
+    my ($p, $lim, $n) = (0, length $l, $k->{sf});
+    while ($p < $lim && $n--) {
+        if (defined $tab) { $p++ while $p < $lim && substr($l, $p, 1) ne $tab; $p++ if $p < $lim }
+        else { $p++ while $p < $lim && blank(substr $l, $p, 1); $p++ while $p < $lim && !blank(substr $l, $p, 1) }
+    }
+    if ($k->{sb}) { $p++ while $p < $lim && blank(substr $l, $p, 1) }
+    $p += $k->{sc};
+    return $p < $lim ? $p : $lim;
+}
+sub limfield {
+    my ($l, $k) = @_;
+    my ($p, $lim) = (0, length $l);
+    return $lim unless defined $k->{ef};
+    my ($n, $ec) = ($k->{ef}, $k->{ec});
+    $n++ if $ec == 0;
+    while ($p < $lim && $n--) {
+        if (defined $tab) { $p++ while $p < $lim && substr($l, $p, 1) ne $tab; $p++ if $p < $lim && ($n || $ec) }
+        else { $p++ while $p < $lim && blank(substr $l, $p, 1); $p++ while $p < $lim && !blank(substr $l, $p, 1) }
+    }
+    if ($ec) {
+        if ($k->{eb}) { $p++ while $p < $lim && blank(substr $l, $p, 1) }
+        $p += $ec;
+    }
+    return $p < $lim ? $p : $lim;
+}
+sub keytext {
+    my ($l, $k) = @_;
+    return $k->{sb} ? ($l =~ /^[ \t]*(.*)$/s)[0] : $l if $k->{whole};
+    my ($b, $e) = (begfield($l, $k), limfield($l, $k));
+    return $e > $b ? substr($l, $b, $e - $b) : '';
+}
+
+# GNU's numbers: blanks, an optional '-', digits and a '.'; anything else counts as 0.
+sub num { my ($s) = @_; $s =~ /^[ \t]*(-?(?:\d+\.?\d*|\.\d+))/ ? $1 + 0 : 0 }
+sub general {
+    my ($s) = @_;
+    return [0, 0] unless $s =~ /^[ \t]*([-+]?(?:(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?|inf(?:inity)?|nan))/i;
+    my $v = $1;
+    return [1, 0] if $v =~ /nan/i;
+    return [2, $v =~ /^-/ ? -9**9**9 : $v =~ /inf/i ? 9**9**9 : $v + 0];
+}
+my %unit = (k => 1, K => 1, M => 2, G => 3, T => 4, P => 5, E => 6, Z => 7, Y => 8, R => 9, Q => 10);
+sub human {
+    my ($s) = @_;
+    my ($minus, $int, $frac, $suffix) = $s =~ /^[ \t]*(-?)(\d*)(?:\.(\d*))?(.?)/;
+    my $order = $int . ($frac // '') =~ /[1-9]/ ? ($unit{$suffix} // 0) : 0;
+    return ($minus ? -$order : $order, num($s));
+}
+my %month = (JAN => 1, FEB => 2, MAR => 3, APR => 4, MAY => 5, JUN => 6, JUL => 7, AUG => 8, SEP => 9, OCT => 10, NOV => 11, DEC => 12);
+sub month { my ($s) = @_; $s =~ /^[ \t]*(...)/ ? $month{uc $1} // 0 : 0 }
+
+# gnulib's filevercmp, as GNU sort -V uses it.
+sub order {
+    my ($c) = @_;
+    return 0 unless defined $c;
+    return 0 if $c =~ /\d/;
+    return ord $c if $c =~ /[A-Za-z]/;
+    return -1 if $c eq '~';
+    return ord($c) + 256;
+}
+sub verrevcmp {
+    my ($a, $b) = @_;
+    my ($i, $j, $la, $lb) = (0, 0, length $a, length $b);
+    while ($i < $la || $j < $lb) {
+        my $first = 0;
+        while (($i < $la && substr($a, $i, 1) !~ /\d/) || ($j < $lb && substr($b, $j, 1) !~ /\d/)) {
+            my $ac = order($i < $la ? substr($a, $i, 1) : undef);
+            my $bc = order($j < $lb ? substr($b, $j, 1) : undef);
+            return $ac <=> $bc if $ac != $bc;
+            $i++; $j++;
+        }
+        $i++ while $i < $la && substr($a, $i, 1) eq '0';
+        $j++ while $j < $lb && substr($b, $j, 1) eq '0';
+        while ($i < $la && $j < $lb && substr($a, $i, 1) =~ /\d/ && substr($b, $j, 1) =~ /\d/) {
+            $first ||= substr($a, $i, 1) cmp substr($b, $j, 1);
+            $i++; $j++;
+        }
+        return 1 if $i < $la && substr($a, $i, 1) =~ /\d/;
+        return -1 if $j < $lb && substr($b, $j, 1) =~ /\d/;
+        return $first if $first;
+    }
+    return 0;
+}
+sub prefix { my ($s) = @_; $s =~ /^(.+?)((?:\.[A-Za-z~][A-Za-z0-9~]*)*)$/s ? $1 : $s }
+sub filevercmp {
+    my ($a, $b) = @_;
+    return 0 if $a eq $b;
+    return -1 if $a eq '';
+    return 1 if $b eq '';
+    if ($a =~ /^\./) {
+        return -1 if $b !~ /^\./;
+        for my $special ('.', '..') {
+            return $b eq $special ? 0 : -1 if $a eq $special;
+            return 1 if $b eq $special;
+        }
+    } elsif ($b =~ /^\./) {
+        return 1;
+    }
+    my ($pa, $pb) = (prefix($a), prefix($b));
+    my $r = verrevcmp($pa, $pb);
+    return $r if $r || ($pa eq $a && $pb eq $b);
+    return verrevcmp($a, $b);
+}
+
+sub keycmp {
+    my ($k, $x, $y) = @_;
+    for ($x, $y) {
+        tr/ \t0-9A-Za-z//cd if $k->{d};
+        tr/\x20-\x7e//cd if $k->{i};
+        $_ = uc if $k->{f};
+    }
+    my $d;
+    if    ($k->{V}) { $d = filevercmp($x, $y) }
+    elsif ($k->{h}) { my @x = human($x); my @y = human($y); $d = $x[0] <=> $y[0] || $x[1] <=> $y[1] }
+    elsif ($k->{n}) { $d = num($x) <=> num($y) }
+    elsif ($k->{g}) { my ($p, $q) = (general($x), general($y)); $d = $p->[0] <=> $q->[0] || $p->[1] <=> $q->[1] }
+    elsif ($k->{M}) { $d = month($x) <=> month($y) }
+    else            { $d = $x cmp $y }
+    return $k->{r} ? -$d : $d;
+}
+sub keyscmp {
+    my ($x, $y) = @_;
+    for my $k (@keys) {
+        my $d = keycmp($k, keytext($x, $k), keytext($y, $k));
+        return $d if $d;
+    }
+    return 0;
+}
+
+my @lines;
+for my $f (@files ? @files : '-') {
+    my $in;
+    if ($f eq '-') { $in = \*STDIN }
+    elsif (!open($in, '<', $f)) { print STDERR "sort: $f: No such file or directory\n"; exit 2 }
+    binmode $in;
+    local $/ = $eol;
+    while (my $l = <$in>) { $l =~ s/\Q$eol\E\z//; push @lines, $l }
+}
+my @sorted = sort {
+    keyscmp($a, $b) || ($stable || $unique ? 0 : $g{r} ? $b cmp $a : $a cmp $b)
+} @lines;
+if ($unique) {
+    my @u;
+    for (@sorted) { push @u, $_ unless @u && keyscmp($u[-1], $_) == 0 }
+    @sorted = @u;
+}
+my $fh = \*STDOUT;
+if (defined $out) { open($fh, '>', $out) or do { print STDERR "sort: $out: $!\n"; exit 2 } }
+binmode $fh;
+print {$fh} map { $_ . $eol } @sorted;
