@@ -1,0 +1,63 @@
+#!/bin/sh
+# platform: macOS-only -- Mac OS X 10.9's sed has no -r, GNU's -i without a suffix, N,+M addresses or long options
+#   so -r is -E, -u is -l, GNU's long options become short ones, options may follow the script or files, and
+#   a numeric N,+M address becomes N,N+M. After -i, an empty argument or one starting with . or ~ is 10.9's
+#   backup suffix; anything else is GNU's next argument, with no backup (so -i -e no longer leaves FILE-e).
+#   GNU-only features beyond those (-s, -z, \+ in basic regexps, /re/,+M, 0,/re/) are still 10.9's errors.
+__cc_p=
+for __cc_a in "$@"; do
+  case "$__cc_p" in
+    -*i) case "$__cc_a" in ''|.*|~*) ;; *) exec /usr/bin/perl -x "$0" "$@" ;; esac ;;
+  esac
+  case "$__cc_a" in
+    --) break ;;
+    --?*|-*[ru]*|*,+[0-9]*) exec /usr/bin/perl -x "$0" "$@" ;;
+  esac
+  __cc_p=$__cc_a
+done
+exec /usr/bin/sed "$@"
+#!/usr/bin/perl
+use strict;
+use warnings;
+
+sub usage { print STDERR "sed: $_[0]\n"; exit 1 }
+sub script { my ($s) = @_; $s =~ s/((?:^|[;\n{}])[ \t]*)(\d+),\+(\d+)/$1 . $2 . ',' . ($2 + $3)/ge; $s }
+sub suffix { @_ && defined $_[0] && ($_[0] eq '' || $_[0] =~ /^[.~]/) }
+
+my %long = ('regexp-extended' => 'E', quiet => 'n', silent => 'n', unbuffered => 'l');
+my (@opts, @operands);
+my $scripted = 0;
+my @args = @ARGV;
+while (@args) {
+    my $a = shift @args;
+    if ($a eq '--') { push @operands, @args; last }
+    if ($a =~ /^--([a-z-]+)(?:=(.*))?$/s) {
+        my ($name, $v) = ($1, $2);
+        if    ($long{$name})        { push @opts, "-$long{$name}" }
+        elsif ($name eq 'expression') { push @opts, '-e', script(defined $v ? $v : shift @args); $scripted = 1 }
+        elsif ($name eq 'file')       { push @opts, '-f', defined $v ? $v : shift @args; $scripted = 1 }
+        elsif ($name eq 'in-place')   { push @opts, '-i', defined $v ? $v : '' }
+        elsif ($name eq 'posix')      { }
+        else                          { usage("unrecognized option '$a'") }
+    } elsif ($a =~ /^-(.+)$/s) {
+        my @c = split //, $1;
+        while (defined(my $c = shift @c)) {
+            if ($c eq 'r') { push @opts, '-E' }
+            elsif ($c eq 'u') { push @opts, '-l' }
+            elsif ($c eq 'e' || $c eq 'f') {
+                my $v = @c ? join('', splice @c) : shift @args;
+                defined $v or usage("option requires an argument -- $c");
+                push @opts, "-$c", $c eq 'e' ? script($v) : $v;
+                $scripted = 1;
+            } elsif ($c eq 'i') {
+                push @opts, '-i', @c ? join('', splice @c) : suffix(@args) ? shift @args : '';
+            } else {
+                push @opts, "-$c";
+            }
+        }
+    } else {
+        push @operands, $a;
+    }
+}
+$operands[0] = script($operands[0]) if !$scripted && @operands;
+exec { '/usr/bin/sed' } 'sed', @opts, @operands or die "sed: /usr/bin/sed: $!\n";

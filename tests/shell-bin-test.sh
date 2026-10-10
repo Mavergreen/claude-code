@@ -240,3 +240,41 @@ same sort "b${NL}a${NL}" "a${NL}b${NL}rc=0" "no -V or -h passes through"
 same sort "10${NL}9${NL}" "9${NL}10${NL}rc=0" "-n passes through" -n
 shim sort "" "sort: nonexistent: No such file or directory${NL}rc=2" "-V with a missing file fails" -V nonexistent
 unset LC_ALL
+
+# --- sed
+platform sed "Mac OS X 10.9's sed has no -r, GNU's -i without a suffix, N,+M addresses or long options"
+L5="1${NL}2${NL}3${NL}4${NL}5${NL}"
+fresh() { rm -rf ed; mkdir ed; printf 'a1\na2\n' > ed/f; }
+inplace() { printf '%s|' "$(cat ed/f | tr '\n' ' ')"; (cd ed && ls | tr '\n' ' '); }
+for impl in shim gnu-oracle; do
+  case "$impl" in shim) S="$SB/sed" ;; *) S="$(gnu sed)" ;; esac
+  [ -n "$S" ] || continue
+  fresh; "$S" -i 's/a/b/' ed/f 2>/dev/null || :; h_assert_eq "b1 b2 |f " "$(inplace)" "[sed:$impl] -i SCRIPT FILE edits in place, no backup"
+  fresh; "$S" -i -e 's/a/b/' ed/f 2>/dev/null || :; h_assert_eq "b1 b2 |f " "$(inplace)" "[sed:$impl] -i -e SCRIPT FILE leaves no f-e backup"
+  fresh; "$S" -i.bak 's/a/b/' ed/f 2>/dev/null || :; h_assert_eq "b1 b2 |f f.bak " "$(inplace)" "[sed:$impl] -i.bak keeps a backup"
+  fresh; "$S" -n -i 's/a1/c/p' ed/f 2>/dev/null || :; h_assert_eq "c |f " "$(inplace)" "[sed:$impl] -n -i"
+  fresh; "$S" -ni 's/a1/c/p' ed/f 2>/dev/null || :; h_assert_eq "c |f " "$(inplace)" "[sed:$impl] -ni"
+  fresh; "$S" -E -i 's/(a)/\1\1/' ed/f 2>/dev/null || :; h_assert_eq "aa1 aa2 |f " "$(inplace)" "[sed:$impl] -E -i"
+  fresh; "$S" --in-place 's/a/b/' ed/f 2>/dev/null || :; h_assert_eq "b1 b2 |f " "$(inplace)" "[sed:$impl] --in-place"
+  fresh; "$S" --in-place=.orig 's/a/b/' ed/f 2>/dev/null || :; h_assert_eq "b1 b2 |f f.orig " "$(inplace)" "[sed:$impl] --in-place=SUFFIX"
+  fresh; "$S" 's/a/b/' -i ed/f 2>/dev/null || :; h_assert_eq "b1 b2 |f " "$(inplace)" "[sed:$impl] -i after the script"
+done
+fresh; "$SB/sed" -i '' 's/a/b/' ed/f 2>/dev/null || :; h_assert_eq "b1 b2 |f " "$(inplace)" "sed shim: 10.9's -i '' still works"
+fresh; "$SB/sed" -i .bak 's/a/b/' ed/f 2>/dev/null || :; h_assert_eq "b1 b2 |f f.bak " "$(inplace)" "sed shim: 10.9's -i .bak still works"
+fresh; "$SB/sed" -i '' -e 's/a/b/' ed/f 2>/dev/null || :; h_assert_eq "b1 b2 |f " "$(inplace)" "sed shim: 10.9's -i '' -e still works"
+same sed "$L5" "2${NL}3${NL}rc=0" "-n 'N,+M p'" -n '2,+1p'
+same sed "$L5" "2${NL}3${NL}5${NL}rc=0" "-n 'N,+Mp;Np'" -n '2,+1p;5p'
+same sed "$L5" "1${NL}4${NL}5${NL}rc=0" "-e 'N,+Md'" -e '2,+1d'
+same sed "$L5" "1${NL}4${NL}5${NL}rc=0" "--expression='N,+Md'" --expression='2,+1d'
+same sed "aa${NL}" "X${NL}rc=0" "-r is -E" -r 's/(a)+/X/'
+same sed "aa${NL}" "X${NL}rc=0" "--regexp-extended" --regexp-extended 's/(a)+/X/'
+same sed "aa${NL}" "X${NL}rc=0" "-nr" -nr 's/(a)+/X/p'
+same sed "$L5" "2${NL}rc=0" "--quiet" --quiet 2p
+same sed "$L5" "2${NL}rc=0" "--silent" --silent 2p
+same sed "$L5" "2${NL}rc=0" "-u is accepted" -u -n 2p
+printf 'one\n' > sf
+same sed "" "ONE${NL}rc=0" "an option after the file, as GNU allows" 's/one/ONE/' sf
+same sed "" "ONE${NL}rc=0" "--expression=SCRIPT FILE" --expression=s/one/ONE/ sf
+same sed "$L5" "2${NL}rc=0" "-n Np passes through" -n 2p
+same sed "aa${NL}" "X${NL}rc=0" "-E passes through" -E 's/(a)+/X/'
+same sed "a,+1${NL}" "b,+1${NL}rc=0" "a ,+ inside a substitution is left alone" 's/a,+1/b,+1/'
