@@ -10,7 +10,7 @@ NL='
 '
 mkdir -p "$H/work" "$H/tmp" "$H/my env"
 h_assert_ok test -f "$E"
-for f in mktemp timeout env setsid base64 paste tac xargs; do h_assert_ok test -x "$SB/$f"; done
+for f in mktemp timeout env setsid base64 paste readlink tac xargs; do h_assert_ok test -x "$SB/$f"; done
 
 _probe="$(TMPDIR="$H/tmp/" /usr/bin/mktemp -t probe)"
 REFDIR="$(cd "$(dirname "$_probe")" && pwd -P)"
@@ -77,7 +77,7 @@ for sh in $shells; do
   h_assert_eq "$H/home" "$(run "$sh" 'cd "$HOME" && pwd')" "[$sh] cd to a real directory works"
   h_assert_eq "$H/work" "$(run "$sh" 'cd "$HOME" && cd - >/dev/null && pwd')" "[$sh] cd - works"
   h_assert_eq "$H/home" "$(run "$sh" 'pushd "$HOME" >/dev/null && pwd')" "[$sh] pushd to a real directory works"
-  for f in mktemp timeout env setsid base64 paste tac xargs; do
+  for f in mktemp timeout env setsid base64 paste readlink tac xargs; do
     h_assert_eq "$SB/$f" "$(run "$sh" "command -v $f")" "[$sh] $f resolves to the shim"
   done
   p="$(run "$sh" '. "$CLAUDE_ENV_FILE"; printf %s "$PATH"')"

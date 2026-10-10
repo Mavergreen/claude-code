@@ -86,3 +86,29 @@ same tac "x${NL}y${NL}" "b${NL}a${NL}y${NL}x${NL}rc=0" "- is stdin" t1 -
 same tac "" "rc=0" "an empty input gives nothing"
 shim tac "" "tac: nonexistent: No such file or directory${NL}rc=1" "a missing file fails" nonexistent
 shim tac "" "tac: -s is not supported${NL}rc=1" "options are refused" -s x
+
+# --- readlink
+platform readlink "Mac OS X 10.9's readlink has no -f, -e or -m"
+W="$H/w"
+mkdir -p "$W/d/sub"
+: > "$W/d/file"
+ln -s d/file "$W/lf"
+ln -s ../../d "$W/d/sub/up"
+ln -s lf "$W/l2"
+ln -s loop1 "$W/loop2"; ln -s loop2 "$W/loop1"
+ln -s nowhere "$W/dangling"
+same readlink "" "$W/d/file${NL}rc=0" "-f follows a chain of links" -f l2
+same readlink "" "$W/d/file${NL}rc=0" "-f resolves .. after a link" -f d/sub/up/sub/../file
+same readlink "" "$W/d/new${NL}rc=0" "-f allows a missing last component" -f d/new
+same readlink "" "$W/nowhere${NL}rc=0" "-f follows a dangling link to its missing target" -f dangling
+same readlink "" "rc=1" "-f fails quietly on a missing directory" -f nodir/new
+same readlink "" "rc=1" "-e fails on a missing last component" -e d/new
+same readlink "" "$W/d/file${NL}rc=0" "-e resolves an existing path" -e lf
+same readlink "" "$W/nodir/new${NL}rc=0" "-m needs nothing to exist" -m nodir/new
+same readlink "" "$W/d${NL}rc=0" "-f on a directory, trailing slash" -f d/
+same readlink "" "/${NL}rc=0" "-f /" -f /
+same readlink "" "rc=1" "-f fails on a loop" -f loop1
+same readlink "" "$W/d/filerc=0" "-n -f prints no newline" -n -f lf
+same readlink "" "$W/d/file${NL}$W/d${NL}rc=0" "-f takes several files" -f lf d
+same readlink "" "d/file${NL}rc=0" "no option prints the link itself" lf
+same readlink "" "rc=1" "no option on a non-link fails" d/file

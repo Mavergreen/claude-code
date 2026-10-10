@@ -1,0 +1,49 @@
+#!/bin/sh
+# platform: macOS-only -- Mac OS X 10.9's readlink has no -f, -e or -m
+#   usage: readlink -f|-e|-m [-n] [-q|-s|-v] [-z] FILE...   as GNU's (see canonical.pl); quiet on failure unless -v
+#          Without -f, -e or -m, /usr/bin/readlink prints the link itself.
+for __cc_a in "$@"; do
+  case "$__cc_a" in
+    --) break ;;
+    --?*|-*[fem]*) exec /usr/bin/perl -x "$0" "$@" ;;
+  esac
+done
+exec /usr/bin/readlink "$@"
+#!/usr/bin/perl
+use strict;
+use warnings;
+use File::Basename ();
+my $lib = File::Basename::dirname($0) . '/../canonical.pl';
+require $lib;
+
+my %long = (canonicalize => 'f', 'canonicalize-existing' => 'e', 'canonicalize-missing' => 'm',
+            'no-newline' => 'n', quiet => 'q', silent => 's', verbose => 'v', zero => 'z');
+my ($mode, $nonl, $verbose, $end) = ('', 0, 0, "\n");
+my @files;
+$| = 1;
+while (@ARGV) {
+    my $a = shift @ARGV;
+    if ($a eq '--') { push @files, @ARGV; last }
+    my @o = $a =~ /^--(.+)$/ ? ($long{$1} // usage("unrecognized option '$a'")) : $a =~ /^-(.+)$/ ? split(//, $1) : ();
+    @o or do { push @files, $a; next };
+    for (@o) {
+        if    (/[fem]/) { $mode = $_ }
+        elsif ($_ eq 'n') { $nonl = 1 }
+        elsif (/[qs]/)  { $verbose = 0 }
+        elsif ($_ eq 'v') { $verbose = 1 }
+        elsif ($_ eq 'z') { $end = "\0" }
+        else { usage("invalid option -- '$_'") }
+    }
+}
+$mode or exec { '/usr/bin/readlink' } 'readlink', ($nonl ? '-n' : ()), @files;
+@files or usage('missing operand');
+if ($nonl && @files > 1) { print STDERR "readlink: ignoring --no-newline with multiple arguments\n"; $nonl = 0 }
+my $rc = 0;
+for my $f (@files) {
+    my ($p, $why) = canonical($f, $mode, 1);
+    if (defined $p) { print $p, $nonl ? '' : $end }
+    else { print STDERR "readlink: $f: $why\n" if $verbose; $rc = 1 }
+}
+exit $rc;
+
+sub usage { print STDERR "readlink: $_[0]\n"; exit 1 }
