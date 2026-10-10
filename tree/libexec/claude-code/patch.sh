@@ -38,11 +38,14 @@ cc_build() {
   find "$_cc_bd" -name 'claude.*' -type f -mmin +60 -exec rm -f {} + 2>/dev/null
   _cc_bt="$(mktemp "$_cc_bd/claude.$$.XXXXXX")" || { echo "could not create a temporary file in $_cc_bd" > "$CC_STATE/last-patch-error"; return 3; }
   if ! "$CC_TREE/libexec/drydock-macho-rewrite" "$CC_VERSIONS/$_cc_bv" "$_cc_bt" \
-      < "$CC_TREE/share/claude-code/recipe" > "$CC_STATE/last-patch-error" 2>&1; then
-    rm -f "$_cc_bt"
+      < "$CC_TREE/share/claude-code/recipe" > "$_cc_bt.log" 2>&1; then
+    mv -f "$_cc_bt.log" "$CC_STATE/last-patch-error"
+    rm -f "$_cc_bt" "$_cc_bt.log"
     return 3
   fi
+  rm -f "$_cc_bt.log"
   if ! { chmod +x "$_cc_bt" && mv -f "$_cc_bt" "$_cc_be"; }; then
+    echo "could not install the patched copy as $_cc_be" > "$CC_STATE/last-patch-error"
     rm -f "$_cc_bt"
     return 3
   fi

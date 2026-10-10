@@ -120,6 +120,7 @@ if [ -f "$H/drydock-barrier" ]; then
 fi
 [ ! -f "$H/drydock-slow" ] || sleep "$(cat "$H/drydock-slow")"
 if [ -f "$H/drydock-refuses" ] && grep -qx "$(basename "$in")" "$H/drydock-refuses"; then
+  echo "fake drydock: refusing $(basename "$in")" >&2
   exit 3
 fi
 recipe="$(mktemp "${TMPDIR:-/tmp}/recipe.XXXXXX")"

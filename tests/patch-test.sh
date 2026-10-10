@@ -59,6 +59,19 @@ h_assert_eq "$(cc_entry 2.1.289)" "$(cc_runnable 2.1.290 2>/dev/null)" "refusal 
 h_assert_contains "$(cat "$CC_STATE/last-patch-error")" "fake drydock: detail on stderr" "last-patch-error keeps drydock's stderr"
 h_assert_contains "$(cat "$CC_STATE/last-patch-error")" "fake drydock: progress on stdout" "last-patch-error keeps drydock's stdout"
 h_assert_eq "0" "$(leftovers)" "refusal leaves no temp files"
+rm -f "$H/drydock-refuses" "$(cc_entry 2.1.289)"
+cc_build 2.1.289
+h_assert_contains "$(cat "$CC_STATE/last-patch-error")" "fake drydock: refusing 2.1.290" "a later successful build leaves last-patch-error holding the failure the fallback note points at"
+h_assert_eq "0" "$(leftovers)" "a successful build leaves no log behind"
+rm -f "$(cc_entry 2.1.289)"
+printf '#!/bin/sh\nexit 1\n' > "$H/bin/chmod"; chmod +x "$H/bin/chmod"; hash -r
+RC=0; cc_build 2.1.289 || RC=$?
+rm -f "$H/bin/chmod"; hash -r
+h_assert_eq "3" "$RC" "a patched copy that cannot be installed returns 3"
+h_assert_contains "$(cat "$CC_STATE/last-patch-error")" "could not install the patched copy as $(cc_entry 2.1.289)" "and last-patch-error says so, not what an earlier run left there"
+h_assert_eq "0" "$(leftovers)" "and leaves no temp files"
+cc_build 2.1.289
+printf '2.1.290\n' > "$H/drydock-refuses"
 
 mkdir -p "$H/save"
 h_offline
