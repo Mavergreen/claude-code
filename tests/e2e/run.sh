@@ -1,10 +1,12 @@
 #!/bin/sh
 # platform: macOS-only -- drives an installed claude-code on Mac OS X 10.9
-#   usage: sh tests/e2e/run.sh   (exit 77 unless 10.9 with the product installed; checks 5-7 also need CC_E2E_REAL_ACCOUNT=1)
+#   usage: sh tests/e2e/run.sh   (exit 77 unless 10.9 with the product installed; checks 5-6 also need CC_E2E_REAL_ACCOUNT=1;
+#          CC_E2E_CHECKS="1 7" runs only those checks)
 
 MG=/usr/local/mavergreen
 CLAUDE="$MG/claude-code/bin/claude"
 LIBX="$MG/claude-code/libexec/claude-code"
+TTIDLE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/ttidle.py"
 FAILS=0
 HOMES=""
 OLDER="${CC_E2E_OLDER_VERSION:-2.1.285}"
@@ -160,19 +162,45 @@ check6() {
 }
 
 check7() {
-  _n=7; _name="spin canary"
-  real_account $_n "$_name" || return
-  skip $_n "$_name" "spin_canary.sh links the real ~/.local/share/claude* trees into its throwaway HOME, which the launcher's takeover would migrate and modify; it cannot target the launcher safely until it moves into this repo"
+  _n=7; _name="spin canary: idles with wide characters on screen"
+  new_home || { fail $_n "$_name" "no throwaway HOME"; return; }
+  _h="$(cd "$NEWHOME" && pwd -P)" || { fail $_n "$_name" "could not resolve the throwaway HOME"; return; }
+  _py=/usr/bin/python; [ -x "$_py" ] || _py=python3
+  ccrun "$_h" 900 "$CLAUDE" --version >/dev/null 2>&1 || { fail $_n "$_name" "claude --version failed, so there is nothing to watch"; return; }
+  _p="$_h/wide project"
+  mkdir -p "$_p/.claude/skills/wide" || { fail $_n "$_name" "could not make the project"; return; }
+  _wide='Wide characters — em dashes – en dashes … 日本語のテキスト 한국어 中文 🙂🚀 e\xcc\x81 «»'
+  printf "# Canary\n\n$_wide\n\n- $_wide\n- $_wide\n" > "$_p/CLAUDE.md"
+  printf -- "---\nname: wide\ndescription: $_wide — a skill whose text is wide\n---\n\n$_wide\n" > "$_p/.claude/skills/wide/SKILL.md"
+  "$_py" -c '
+import json, sys
+home, project, key = sys.argv[1], sys.argv[2], sys.argv[3]
+c = {"hasCompletedOnboarding": True, "theme": "dark",
+     "projects": {project: {"hasTrustDialogAccepted": True, "projectOnboardingSeenCount": 9}}}
+if key:
+    c["customApiKeyResponses"] = {"approved": [key[-20:]], "rejected": []}
+open(home + "/.claude.json", "w").write(json.dumps(c))
+' "$_h" "$_p" "${ANTHROPIC_API_KEY-}" || { fail $_n "$_name" "could not seed .claude.json"; return; }
+  set --
+  [ -z "${ANTHROPIC_API_KEY-}" ] || set -- "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY"
+  _r="$(cd "$_p" && ccrun "$_h" 300 "$@" DISABLE_AUTOUPDATER=1 TTIDLE_LOG="$_h/screen.log" "$_py" "$TTIDLE" 180 "$CLAUDE" 2>&1 | tail -n 1)"
+  case "$_r" in
+    TTIDLE=none*) fail $_n "$_name" "it never went idle -- the spin is back? ($_r)"; return ;;
+    TTIDLE=[0-9]*) ;;
+    *) fail $_n "$_name" "inconclusive: $_r"; return ;;
+  esac
+  LC_ALL=C perl -0ne 'exit(m{~/wide(?:\e\[\d*[CG]| )+project} ? 0 : 1)' "$_h/screen.log" 2>/dev/null \
+    || { fail $_n "$_name" "it idled, but its screen never showed the REPL's header, ~/wide project, so it may have idled at a dialog before reading the wide text ($_r)"; return; }
+  pass $_n "$_name ($_r)"
 }
 
-check1
-check2
-check3
-check4
-[ "$HOME" = "$REAL_HOME" ] || { fail 0 environment "HOME leaked: $HOME"; HOME="$REAL_HOME"; }
-check5
-check6
-check7
+for _c in ${CC_E2E_CHECKS:-1 2 3 4 5 6 7}; do
+  case "$_c" in
+    [1-7]) "check$_c" ;;
+    *) fail 0 "CC_E2E_CHECKS" "no check $_c" ;;
+  esac
+  [ "$HOME" = "$REAL_HOME" ] || { fail 0 environment "HOME leaked: $HOME"; HOME="$REAL_HOME"; }
+done
 
 [ "$FAILS" -eq 0 ] || exit 1
 exit 0
