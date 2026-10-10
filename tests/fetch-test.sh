@@ -16,7 +16,8 @@ h_assert_eq "2.1.290" "$(cc_latest)" "cc_latest reads and strips the channel fil
 
 want_x64="$(cc_sha256 "$H/cdn/2.1.289/darwin-x64/claude")"
 want_arm64="$(printf 'arm64-2.1.289' | shasum -a 256 | cut -d' ' -f1)"
-got="$(cc_manifest_sum 2.1.289)"
+cc_manifest_sum 2.1.289
+got="$_cc_msum"
 h_assert_eq "$want_x64" "$got" "manifest sum is darwin-x64's"
 h_assert_eq "no" "$([ "$got" = "$want_arm64" ] && echo yes || echo no)" "manifest sum is not darwin-arm64's"
 
@@ -44,10 +45,11 @@ h_assert_eq "" "$(ls "$CC_VERSIONS" | grep 'mavergreen-dl' || true)" "no temp fi
 mkdir -p "$H/cdn/2.1.291/darwin-x64"
 printf 'x' > "$H/cdn/2.1.291/darwin-x64/claude"
 printf '{\n  "platforms": {\n    "darwin-arm64": {\n      "checksum": "%s"\n    }\n  }\n}\n' "$want_arm64" > "$H/cdn/2.1.291/manifest.json"
-rc=0; cc_manifest_sum 2.1.291 >/dev/null || rc=$?
+rc=0; cc_manifest_sum 2.1.291 || rc=$?
 h_assert_eq "1" "$rc" "no darwin-x64 block: no sum"
 rc=0; out="$(cc_fetch 2.1.291 2>&1)" || rc=$?
 h_assert_contains "$out" "could not read the checksum for Claude Code 2.1.291" "no-checksum message"
+h_assert_contains "$out" "from $CC_CDN: its manifest lists no darwin-x64 checksum" "the no-checksum message says what the manifest lacked"
 h_assert_eq "1" "$rc" "cc_fetch fails without a darwin-x64 checksum"
 h_assert_absent "$CC_VERSIONS/2.1.291" "no binary without checksum"
 
@@ -56,6 +58,7 @@ rm "$H/cdn/2.1.292/darwin-x64/claude"
 rc=0; out="$(cc_fetch 2.1.292 2>&1)" || rc=$?
 h_assert_eq "1" "$rc" "cc_fetch fails when the binary is missing from the CDN"
 h_assert_contains "$out" "could not download Claude Code 2.1.292" "download failure message"
+h_assert_contains "$out" "from $CC_CDN: curl: (37) " "the download failure message carries curl's own error, so a missing file and an unreachable CDN read differently"
 h_assert_absent "$CC_VERSIONS/2.1.292" "no binary on download failure"
 h_assert_eq "" "$(ls "$CC_VERSIONS" | grep 'mavergreen-dl' || true)" "no temp file after download failure"
 
@@ -135,5 +138,13 @@ h_assert_eq "1" "$rc" "offline: a record that does not match the binary is a mis
 rc=0; out="$(cc_latest 2>&1)" || rc=$?
 h_assert_eq "1" "$rc" "cc_latest fails on unreachable CDN"
 h_assert_contains "$out" "could not reach file:///nonexistent" "unreachable message"
+h_assert_contains "$out" "could not reach file:///nonexistent: curl: (37) " "the unreachable message carries curl's own error"
 
 echo "fetch-test: ok"
+
+h_fake_curl
+: > "$H/curl-offline"
+rc=0; out="$(cc_fetch 2.1.296 2>&1)" || rc=$?
+rm -f "$H/curl-offline"
+h_assert_eq "1" "$rc" "cc_fetch fails when the CDN cannot be reached"
+h_assert_contains "$out" "could not read the checksum for Claude Code 2.1.296 from $CC_CDN: curl: (7) Failed to connect" "and the message carries curl's own error"

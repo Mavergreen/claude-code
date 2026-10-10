@@ -80,6 +80,10 @@ h_fake_curl() {
   cat > "$H/bin/curl" <<'CURL'
 #!/bin/sh
 printf '%s\n' "$*" >> "$H/curl.log"
+if [ -f "$H/curl-offline" ]; then
+  echo "curl: (7) Failed to connect to downloads.claude.ai port 443: Connection refused" >&2
+  exit 7
+fi
 if [ -f "$H/curl-hang" ]; then
   o=""; prev=""
   for a in "$@"; do [ "$prev" != "-o" ] || o="$a"; prev="$a"; done
