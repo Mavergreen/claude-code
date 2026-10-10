@@ -7,7 +7,8 @@ CC_LIBEXEC="$H/root/usr/local/mavergreen/claude-code/libexec/claude-code"
 . "$CC_LIBEXEC/lib.sh"
 . "$CC_LIBEXEC/fetch.sh"
 . "$CC_LIBEXEC/select.sh"
-cc_init "$CC_LIBEXEC/lib.sh"
+cc_init "$H/root/usr/local/mavergreen/claude-code/bin/claude"
+h_assert_eq "$H/root/usr/local/mavergreen/claude-code" "$CC_TREE" "the tests run against the copied tree"
 unset DISABLE_AUTOUPDATER
 
 mkv() { mkdir -p "$CC_VERSIONS"; printf '#!/bin/sh\n' > "$CC_VERSIONS/$1"; chmod +x "$CC_VERSIONS/$1"; }

@@ -38,7 +38,8 @@ h_assert_eq "$HOME/.local/bin/claude" "$CC_LINK" "cc_init CC_LINK"
 h_assert_eq "$HOME/Library/Caches/dev.mavergreen.claude-code" "$CC_CACHE" "cc_init CC_CACHE"
 h_assert_eq "$HOME/Library/Application Support/dev.mavergreen.claude-code" "$CC_STATE" "cc_init CC_STATE"
 h_assert_eq "$HOME/.local/share/claude/versions" "$CC_VERSIONS" "cc_init CC_VERSIONS"
-case "$CC_CDN" in file://*/cdn) h_assert_eq ok ok "cc_init CC_CDN ends in /cdn" ;; *) h_assert_eq "file://.../cdn" "$CC_CDN" "cc_init CC_CDN ends in /cdn" ;; esac
+h_assert_eq "$CLAUDE_CODE_CDN" "$CC_CDN" "cc_init takes CC_CDN from CLAUDE_CODE_CDN"
+h_assert_eq "https://downloads.claude.ai/claude-code-releases" "$(unset CLAUDE_CODE_CDN; cc_init "$H/links/hop1"; printf %s "$CC_CDN")" "without CLAUDE_CODE_CDN, CC_CDN is Anthropic's release CDN"
 
 h_cdn_publish 2.1.5
 h_cdn_latest 2.1.5

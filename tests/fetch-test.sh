@@ -6,7 +6,8 @@ h_setup
 CC_LIBEXEC="$H/root/usr/local/mavergreen/claude-code/libexec/claude-code"
 . "$CC_LIBEXEC/lib.sh"
 . "$CC_LIBEXEC/fetch.sh"
-cc_init "$H/root/usr/local/mavergreen/claude-code/libexec/claude-code/lib.sh"
+cc_init "$H/root/usr/local/mavergreen/claude-code/bin/claude"
+h_assert_eq "$H/root/usr/local/mavergreen/claude-code" "$CC_TREE" "the tests run against the copied tree"
 
 h_cdn_publish 2.1.289
 h_cdn_publish 2.1.290 "newer"
@@ -86,6 +87,16 @@ h_assert_fails test -e "$CC_VERSIONS/2.1.200.mavergreen-dl.111"
 h_assert_ok test -e "$CC_VERSIONS/2.1.201.mavergreen-dl.222"
 rm -f "$CC_VERSIONS/2.1.201.mavergreen-dl.222"
 
+h_cdn_publish 2.1.299
+printf '#!/bin/sh\nexit 1\n' > "$H/bin/mv"; chmod +x "$H/bin/mv"; hash -r
+rc=0; out="$(cc_fetch 2.1.299 2>&1)" || rc=$?
+rm -f "$H/bin/mv"; hash -r
+h_assert_eq "1" "$rc" "cc_fetch fails when the verified download cannot be moved into place"
+h_assert_contains "$out" "could not install Claude Code 2.1.299 into $CC_VERSIONS" "and says where it could not install it"
+h_assert_absent "$CC_VERSIONS/2.1.299" "no binary when the move fails"
+h_assert_eq "" "$(ls "$CC_VERSIONS" | grep 'mavergreen-dl' || true)" "no temp file when the move fails"
+h_assert_absent "$CC_STATE/verified/2.1.299" "no recorded checksum when the move fails"
+
 h_fake_curl
 h_cdn_publish 2.1.296
 : > "$H/curl.log"
@@ -112,7 +123,7 @@ h_assert_eq "143" "$rc" "an interrupted download ends by that signal"
 h_assert_eq "" "$(ls "$CC_VERSIONS" | grep 'mavergreen-dl' || true)" "an interrupted download leaves no temp file"
 
 cp "$CC_VERSIONS/2.1.294" "$CC_VERSIONS/2.1.298"
-CLAUDE_CODE_CDN="file:///nonexistent"; cc_init "$CC_LIBEXEC/lib.sh"
+CLAUDE_CODE_CDN="file:///nonexistent"; cc_init "$CC_TREE/bin/claude"
 rc=0; cc_verified 2.1.294 || rc=$?
 h_assert_eq "0" "$rc" "offline: the recorded checksum verifies"
 rc=0; cc_verified 2.1.298 || rc=$?
