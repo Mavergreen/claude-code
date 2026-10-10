@@ -19,7 +19,10 @@ The installer will check.
 curl -fsSL https://github.com/Mavergreen/claude-code/releases/latest/download/install.sh | sh
 ```
 
-If you're upgrading from the Mavericks Forever installer, note the new location of `claude` (not `/usr/local/bin`).
+If you're upgrading from the Mavericks Forever installer:
+
+- Quit every running `claude` first
+- Note that `claude`'s location is no longer `/usr/local/bin`
 
 ## Go back to Mavericks Forever
 
