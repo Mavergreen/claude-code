@@ -1,0 +1,15 @@
+#!/bin/sh
+# platform: macOS-only -- Mac OS X 10.9's paste needs a file operand, where GNU reads stdin
+__cc_n=$#
+__cc_skip=0
+for __cc_a in "$@"; do
+  if [ "$__cc_skip" -eq 1 ]; then __cc_skip=0; __cc_n=$((__cc_n-1)); continue; fi
+  case "$__cc_a" in
+    -d) __cc_skip=1; __cc_n=$((__cc_n-1)) ;;
+    --) __cc_n=$((__cc_n-1)); break ;;
+    -?*) __cc_n=$((__cc_n-1)) ;;
+    *) break ;;
+  esac
+done
+if [ "$__cc_n" -eq 0 ]; then exec /usr/bin/paste "$@" -; fi
+exec /usr/bin/paste "$@"

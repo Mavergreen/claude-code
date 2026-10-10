@@ -56,3 +56,12 @@ shim base64 '' "base64: nonexistent: No such file or directory${NL}rc=1" "-d wit
 shim base64 '' "hi${NL}rc=0" "-d -i FILE decodes, with 10.9's -i" -d -i b64
 shim base64 'aGkK' "rc=0" "-d -o FILE decodes into FILE, with 10.9's -o" -d -o b64out
 h_assert_eq "hi" "$(cat b64out)" "base64 shim: -d -o FILE wrote FILE"
+
+# --- paste
+platform paste "Mac OS X 10.9's paste needs a file operand, where GNU reads stdin"
+same paste "a${NL}b${NL}c${NL}" "a,b,c${NL}rc=0" "-sd, with no file reads stdin" -sd,
+same paste "a${NL}b${NL}c${NL}" "a+b+c${NL}rc=0" "-s -d + with no file reads stdin" -s -d +
+same paste "a${NL}b${NL}" "a${NL}b${NL}rc=0" "no options and no file reads stdin"
+printf '1\n2\n' > p1
+same paste "x${NL}y${NL}" "1	x${NL}2	y${NL}rc=0" "file operands pass through" p1 -
+same paste "" "1,2${NL}rc=0" "-s -d, FILE passes through" -s -d, p1
