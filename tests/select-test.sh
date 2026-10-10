@@ -21,10 +21,13 @@ mkdir "$CC_VERSIONS/staging"
 printf '#!/bin/sh\n' > "$CC_VERSIONS/2.1.291"
 mkdir "$H/somedir"; mkdir "$CC_VERSIONS/2.1.292"
 ln -s "$H/somedir" "$CC_VERSIONS/2.1.293"
+mkdir "$H/vt"; printf '#!/bin/sh\n' > "$H/vt/claude"; chmod +x "$H/vt/claude"
+ln -s "$H/vt/claude" "$CC_VERSIONS/2.1.294"
 
 h_assert_eq "2.1.288
-2.1.289" "$(cc_installed | sort)" "cc_installed lists only executable regular files with version names"
-h_assert_eq "2.1.289" "$(cc_newest)" "newest ignores temp, new, dirs, non-executable"
+2.1.289" "$(cc_installed | sort)" "cc_installed lists only executable regular files with version names, not a symlink to one (Claude Code's updater writes regular files)"
+h_assert_eq "2.1.289" "$(cc_newest)" "newest ignores temp, new, dirs, non-executable, symlinks"
+h_assert_fails cc_is_installed 2.1.294
 h_assert_eq "2.1.289" "$(cc_choose)" "choose picks newest"
 h_assert_eq "2.1.289" "$(cat "$CC_STATE/current")" "current is written"
 

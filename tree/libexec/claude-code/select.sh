@@ -54,7 +54,7 @@ cc_held() {
 
 cc_installed() {
   for _cc_f in "$CC_VERSIONS"/*; do
-    [ -f "$_cc_f" ] && [ -x "$_cc_f" ] || continue
+    [ -f "$_cc_f" ] && [ -x "$_cc_f" ] && [ ! -L "$_cc_f" ] || continue
     _cc_n="${_cc_f##*/}"
     cc_is_version "$_cc_n" && printf '%s\n' "$_cc_n"
   done
@@ -90,7 +90,7 @@ cc_usual() {
 }
 
 cc_is_installed() {
-  cc_is_version "$1" && [ -f "$CC_VERSIONS/$1" ] && [ -x "$CC_VERSIONS/$1" ]
+  cc_is_version "$1" && [ -f "$CC_VERSIONS/$1" ] && [ -x "$CC_VERSIONS/$1" ] && [ ! -L "$CC_VERSIONS/$1" ]
 }
 
 cc_choose() {

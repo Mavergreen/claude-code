@@ -70,7 +70,7 @@ ln -s "$H/vt/target" "$CC_VERSIONS/2.1.100"
 h_assert_ok cc_prune 2.1.288
 h_assert_eq "2.1.100-$OLD 2.1.101-$OLD 2.1.286-$ID 2.1.288-$ID " "$(clist)" "a file and a symlink with an entry's name survive"
 h_assert_ok test -f "$OUT/keep"
-h_assert_eq "2.1.286 2.1.288 " "$(vlist)" "symlinked version removed as a link"
+h_assert_eq "2.1.100 2.1.286 2.1.288 " "$(vlist)" "a symlink with a version's name is not one Claude Code's updater wrote, so prune leaves it"
 h_assert_ok test -x "$H/vt/target"
 
 reset 2.1.99 2.1.289 2.1.999 2.1.1000
