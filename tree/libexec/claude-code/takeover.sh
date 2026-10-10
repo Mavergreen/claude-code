@@ -8,7 +8,8 @@ cc_take() {
     _cc_gone="${_cc_gone}${_cc_gone:+
 }$1"
   else
-    _cc_stuck=1
+    _cc_stuck="${_cc_stuck}${_cc_stuck:+
+}$1"
   fi
 }
 
@@ -22,7 +23,7 @@ cc_takeover() {
     [ "$_cc_was" = "$_cc_dg" ] && return 0
   fi
   _cc_gone=""
-  _cc_stuck=0
+  _cc_stuck=""
   _cc_data="$(cc_data_home)/claude"
   for _cc_p in "$HOME/.local/share/claude-mavericks" "$HOME/.cache/claude-mavericks"; do
     if [ -e "$_cc_p" ] || [ -L "$_cc_p" ]; then
@@ -41,7 +42,10 @@ cc_takeover() {
       fi
     done
   done
-  if [ -n "$_cc_gone" ] || [ -s "$_cc_sys" ]; then
+  _cc_st="$_cc_dg $_cc_stuck"
+  if [ -n "$_cc_stuck" ] && [ -z "$_cc_gone" ] && [ "$(cat "$CC_STATE/stuck-takeover" 2>/dev/null)" = "$_cc_st" ]; then
+    :
+  elif [ -n "$_cc_gone" ] || [ -s "$_cc_sys" ]; then
     cc_note "removed what Mavericks Forever left behind:"
     if [ -n "$_cc_gone" ]; then
       printf '%s\n' "$_cc_gone" | while IFS= read -r _cc_p; do
@@ -59,8 +63,11 @@ cc_takeover() {
     fi
     cc_note "To go back to Mavericks Forever, uninstall Claude Code for Mavericks first (sudo mavergreen uninstall claude-code), then rerun https://mavericksforever.com/claude/install.sh"
   fi
-  if [ "$_cc_stuck" -eq 0 ]; then
+  if [ -z "$_cc_stuck" ]; then
     { mkdir -p "$CC_STATE" && printf '%s\n' "$_cc_dg" > "$CC_STATE/took-over"; } || true
+    rm -f "$CC_STATE/stuck-takeover"
+  else
+    { mkdir -p "$CC_STATE" && printf '%s\n' "$_cc_st" > "$CC_STATE/stuck-takeover"; } 2>/dev/null || :
   fi
   return 0
 }
