@@ -245,6 +245,9 @@ for impl in $timeout_impls; do
   expect "$impl" "$bin" 3   15 30 sh -c 'exit 3'
   expect "$impl" "$bin" 124 15 1 sleep 30
   expect "$impl" "$bin" 124 15 0.5 sleep 30
+  n=1; [ "$impl" != shim ] || n=30
+  i=0
+  while [ "$i" -lt "$n" ]; do expect "$impl" "$bin" 124 2 0.000001 sleep 5; i=$((i+1)); done
   expect "$impl" "$bin" 0   15 1m true
   expect "$impl" "$bin" 137 15 -s KILL 1 sleep 30
   expect "$impl" "$bin" 143 15 --preserve-status 1 sleep 30
