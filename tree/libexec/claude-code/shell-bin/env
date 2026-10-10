@@ -1,20 +1,24 @@
-#!/bin/sh
-# platform: macOS-only -- Mac OS X 10.9's env has no -u
-__cc_i=""
-while [ "$#" -gt 0 ]; do
-  case "$1" in
-    -u|--unset)
-      [ "$#" -ge 2 ] || { echo "env: option requires an argument -- 'u'" >&2; exit 125; }
-      __cc_u=$2; shift 2 ;;
-    --unset=*) __cc_u=${1#--unset=}; shift ;;
-    -u*) __cc_u=${1#-u}; shift ;;
-    -i|-) __cc_i=1; shift; continue ;;
-    *) break ;;
-  esac
-  case "$__cc_u" in
-    ''|[0-9]*|*[!A-Za-z0-9_]*) echo "env: cannot unset '$__cc_u': Invalid argument" >&2; exit 125 ;;
-  esac
-  unset "$__cc_u"
-done
-unset __cc_u
-exec /usr/bin/env ${__cc_i:+-i} "$@"
+#!/usr/bin/perl
+# platform: macOS-only -- Mac OS X 10.9's env has no -u; this takes -i, -u NAME, -uNAME and --unset[=]NAME, then
+#   hands the rest to /usr/bin/env. It is perl 5.16, not sh: 10.9's sh, bash 3.2, drops or rewrites OLDPWD, PWD
+#   and _ in the environment it passes on, and cannot unset a readonly name such as UID.
+use strict;
+use warnings;
+
+my ($clear, @unset) = (0);
+while (@ARGV) {
+    my $a = $ARGV[0];
+    my $name;
+    if    ($a eq '-u' || $a eq '--unset') {
+        @ARGV >= 2 or do { print STDERR "env: option requires an argument -- 'u'\n"; exit 125 };
+        (undef, $name) = splice @ARGV, 0, 2;
+    }
+    elsif ($a =~ /^--unset=(.*)$/s) { $name = $1; shift @ARGV }
+    elsif ($a =~ /^-u(.+)$/s)       { $name = $1; shift @ARGV }
+    elsif ($a eq '-i' || $a eq '-') { $clear = 1; shift @ARGV; next }
+    else                            { last }
+    if ($name !~ /^[A-Za-z_][A-Za-z0-9_]*\z/) { print STDERR "env: cannot unset '$name': Invalid argument\n"; exit 125 }
+    push @unset, $name;
+}
+if ($clear) { %ENV = () } else { delete @ENV{@unset} }
+exec { '/usr/bin/env' } 'env', @ARGV or do { print STDERR "env: /usr/bin/env: $!\n"; exit 126 };

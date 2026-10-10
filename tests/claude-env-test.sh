@@ -90,7 +90,11 @@ for sh in $shells; do
 done
 
 GENV=/opt/pkg/bin/genv
-envrun() { _rc=0; _out="$(A=a B=b "$@" 2>&1)" || _rc=$?; }
+envrun() {
+  _rc=0
+  # shellcheck disable=SC2086
+  _out="$(A=a B=b /usr/bin/env ${ENVX-} "$@" 2>&1)" || _rc=$?
+}
 envcase() {
   _want=$1 _wrc=$2 _label=$3; shift 3
   envrun "$SB/env" "$@"
@@ -115,6 +119,22 @@ envcase unset1 0 "-u A B=1" -u A B=1 sh -c 'echo ${A-unset}$B'
 envcase "" 0 "--" -- true
 envcase a 0 "-- then a utility" -- sh -c 'echo ${A-unset}'
 envcase "" 3 "the utility's status" -u A sh -c 'exit 3'
+envcase unset 0 "-i -u __cc_i still clears the environment" -i -u __cc_i sh -c 'echo ${A-unset}'
+envcase "unset unset" 0 "the shim's own state never reaches the command" -u A sh -c 'echo ${__cc_i-unset} ${__cc_u-unset}'
+ENVX="__cc_i=1 __cc_u=2"
+envcase "1 2" 0 "inherited __cc_i and __cc_u pass through" sh -c 'echo ${__cc_i-unset} ${__cc_u-unset}'
+envcase "1 2 unset" 0 "inherited __cc_i and __cc_u pass through -u A" -u A sh -c 'echo ${__cc_i-unset} ${__cc_u-unset} ${A-unset}'
+envcase "unset 2 a" 0 "-u __cc_i unsets only that" -u __cc_i sh -c 'echo ${__cc_i-unset} ${__cc_u-unset} ${A-unset}'
+ENVX="UID=5"
+envcase "" 1 "-u UID unsets UID quietly" -u UID printenv UID
+ENVX=""
+envcase "" 1 "-u UID with no UID in the environment is quiet" -u UID printenv UID
+ENVX="OLDPWD=/x PWD=/y _=/z"
+for v in OLDPWD:/x PWD:/y _:/z; do
+  envcase "${v#*:}" 0 "${v%%:*} passes through as it came" printenv "${v%%:*}"
+  envcase "${v#*:}" 0 "${v%%:*} passes through -u A as it came" -u A printenv "${v%%:*}"
+done
+ENVX=""
 for impl in "$SB/env" "$GENV"; do
   [ -x "$impl" ] || continue
   envrun "$impl" -u A
