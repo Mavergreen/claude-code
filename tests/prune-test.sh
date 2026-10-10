@@ -110,12 +110,14 @@ mkdir "$H/hold"
 cp /bin/sleep "$H/hold/claude"
 ( exec 3<"$CC_CACHE/2.1.286-$ID/claude"; exec "$H/hold/claude" 30 ) &
 hp=$!
+trap 'kill "$hp" 2>/dev/null; h_teardown' EXIT
 n=0
 until case "$(ps -p "$hp" -o comm= 2>/dev/null)" in claude|*/claude) true ;; *) false ;; esac || [ "$n" -ge 30 ]; do sleep 1; n=$((n+1)); done
 h_assert_ok cc_prune 2.1.289
 h_assert_eq "2.1.286-$ID 2.1.288-$ID 2.1.289-$ID " "$(clist)" "an entry a process holds open survives; an unheld one goes"
 kill "$hp"
 { wait "$hp"; } 2>/dev/null || :
+trap h_teardown EXIT
 h_assert_ok cc_prune 2.1.289
 h_assert_eq "2.1.288-$ID 2.1.289-$ID " "$(clist)" "released, it is pruned"
 
@@ -128,6 +130,17 @@ chmod +x "$H/lsof-err"
 CC_LSOF="$H/lsof-err"
 h_assert_ok cc_prune 2.1.289
 h_assert_eq "2.1.286-$ID 2.1.288-$ID 2.1.289-$ID " "$(clist)" "an lsof error keeps entries"
+printf '#!/bin/sh\nexit 2\n' > "$H/lsof-quiet"
+chmod +x "$H/lsof-quiet"
+CC_LSOF="$H/lsof-quiet"
+h_assert_ok cc_prune 2.1.289
+h_assert_eq "2.1.286-$ID 2.1.288-$ID 2.1.289-$ID " "$(clist)" "an lsof that fails silently, with a status other than 1, keeps entries: only 1 with no output means unheld"
+printf '#!/bin/sh\nprintf "%%s\\n" "$*" >> "$H/lsof.log"\nexit 1\n' > "$H/lsof-log"
+chmod +x "$H/lsof-log"
+CC_LSOF="$H/lsof-log"
+h_assert_ok cc_prune 2.1.289
+h_assert_eq "2.1.288-$ID 2.1.289-$ID " "$(clist)" "an lsof that exits 1 with no output lets the entry go"
+h_assert_eq "-a -c claude -w -t $CC_CACHE/2.1.286-$ID/claude" "$(cat "$H/lsof.log")" "lsof is asked with -w, so its warnings cannot read as a holder"
 unset CC_LSOF
 
 h_teardown
