@@ -1,0 +1,43 @@
+#!/usr/bin/perl
+# platform: macOS-only -- util-linux setsid for Mac OS X 10.9, which has none, in its perl 5.16
+#   usage: setsid [-f] [-w] [--] COMMAND [ARG]...
+#          Runs COMMAND in a new session, with no controlling terminal. Forks first if -f, or if this
+#          process already leads a process group (setsid(2) would fail); the parent then exits 0 at once,
+#          unless -w, when it waits and exits with COMMAND's status (128+N if signal N killed it, where
+#          util-linux exits N). Exits 126 if COMMAND cannot run, 127 if it is not found, 1 otherwise.
+#          -c (take the terminal as the new session's controlling one) is not supported.
+use strict;
+use warnings;
+use POSIX ();
+
+sub usage { print STDERR "setsid: $_[0]\nusage: setsid [-f] [-w] [--] COMMAND [ARG]...\n"; exit 1 }
+
+my ($fork, $wait) = (0, 0);
+while (@ARGV && $ARGV[0] =~ /^-/) {
+    my $a = shift @ARGV;
+    last if $a eq '--';
+    for my $o ($a =~ /^--(fork|wait|ctty)$/ ? (substr $1, 0, 1) : split //, substr $a, 1) {
+        if    ($o eq 'f') { $fork = 1 }
+        elsif ($o eq 'w') { $wait = 1 }
+        elsif ($o eq 'c') { usage('-c (--ctty) is not supported') }
+        else              { usage("unknown option '$a'") }
+    }
+}
+@ARGV or usage('missing command');
+
+if ($fork || getpgrp() == $$) {
+    my $pid = fork;
+    defined $pid or usage("fork failed: $!");
+    if ($pid) {
+        exit 0 unless $wait;
+        my $r;
+        do { $r = waitpid($pid, 0) } while ($r == -1 && $!{EINTR});
+        my $st = $?;
+        exit(POSIX::WIFSIGNALED($st) ? 128 + POSIX::WTERMSIG($st) : POSIX::WEXITSTATUS($st));
+    }
+}
+(POSIX::setsid() // -1) > 0 or do { print STDERR "setsid: setsid failed: $!\n"; POSIX::_exit(1) };
+exec { $ARGV[0] } @ARGV or do {
+    print STDERR "setsid: failed to execute '$ARGV[0]': $!\n";
+    POSIX::_exit($!{ENOENT} ? 127 : 126);
+};

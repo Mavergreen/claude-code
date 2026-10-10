@@ -233,6 +233,53 @@ for impl in $timeout_impls; do
   h_assert_eq "" "$("$bin" 1 sleep 5 2>&1 || :)" "[timeout:$impl] a run that times out prints nothing of its own"
 done
 
+SS="$SB/setsid"
+h_assert_eq "# platform: macOS-only -- util-linux setsid for Mac OS X 10.9, which has none, in its perl 5.16" "$(sed -n 2p "$SS")" "setsid declares its platform"
+if [ -x "$PERL" ]; then
+  sid_of_self='printf "%s %s %s\n" "$$" "$(/usr/bin/perl -e "print syscall(310, getppid())")" "$(ps -o pgid= -p $$ | tr -d " ")"'
+  out="$("$SS" -f -w sh -c "$sid_of_self")"
+  pid="${out%% *}"
+  h_assert_eq "$pid $pid $pid" "$out" "setsid -f -w runs the forked command as the leader of a new session and process group"
+  out="$("$SS" sh -c "$sid_of_self")"
+  pid="${out%% *}"
+  h_assert_eq "$pid $pid $pid" "$out" "setsid in place (not a group leader) also leads a new session and process group"
+  out="$("$PERL" -e 'setpgrp(0, 0); exec @ARGV' "$SS" -w sh -c "$sid_of_self")"
+  pid="${out%% *}"
+  h_assert_eq "$pid $pid $pid" "$out" "setsid run as a process group leader forks so the command can lead a new session"
+  rc=0; "$SS" sh -c 'exit 3' || rc=$?
+  h_assert_eq "3" "$rc" "setsid in place (not a group leader) exits with the command's status"
+  rc=0; "$SS" -f -w sh -c 'exit 5' || rc=$?
+  h_assert_eq "5" "$rc" "setsid -f -w waits for the forked command and exits with its status"
+  rc=0; "$SS" -f -w sh -c 'kill -TERM $$' || rc=$?
+  h_assert_eq "143" "$rc" "setsid -f -w exits 128+N when signal N kills the command"
+  rc=0; "$SS" /nonexistent/command 2>/dev/null || rc=$?
+  h_assert_eq "127" "$rc" "setsid exits 127 when the command is not found"
+  rc=0; "$SS" /etc/passwd 2>/dev/null || rc=$?
+  h_assert_eq "126" "$rc" "setsid exits 126 when the command cannot run"
+  rc=0; "$SS" -f -w /nonexistent/command 2>/dev/null || rc=$?
+  h_assert_eq "127" "$rc" "setsid -f -w exits 127 when the forked command is not found"
+  rc=0; err="$("$SS" 2>&1)" || rc=$?
+  h_assert_eq "1" "$rc" "setsid with no command fails"
+  h_assert_contains "$err" "usage: setsid" "setsid with no command prints its usage"
+  rc=0; err="$("$SS" -c true 2>&1)" || rc=$?
+  h_assert_eq "1" "$rc" "setsid -c is not supported"
+  h_assert_contains "$err" "-c" "setsid -c says what it does not support"
+  rc=0; err="$("$SS" -x true 2>&1)" || rc=$?
+  h_assert_eq "1" "$rc" "setsid rejects an unknown option"
+  h_assert_eq "ran" "$("$SS" -- sh -c 'echo ran')" "setsid -- ends its options"
+  rm -f "$H/detached"
+  t0=$(now)
+  out="$("$SS" -f sh -c 'sleep 2; echo "$$" > "$1"' sh "$H/detached" </dev/null >/dev/null 2>&1; echo "rc=$?")"
+  t1=$(now)
+  h_assert_eq "rc=0" "$out" "setsid -f exits 0 at once"
+  h_assert_eq "0" "$("$PERL" -e "print(($t1 - $t0) > 1.5 ? 1 : 0)")" "setsid -f does not wait for the command"
+  h_assert_fails test -e "$H/detached"
+  i=0
+  while [ ! -s "$H/detached" ] && [ "$i" -lt 10 ]; do /bin/sleep 1; i=$((i+1)); done
+  h_assert_ok test -s "$H/detached"
+  h_assert_eq "" "$("$SS" -f true 2>&1)" "setsid -f prints nothing of its own"
+fi
+
 shape() {
   _ss=$1 _sf=$2 _sn=$3 _sc=$4 _su=${5-}
   _txt="$(cat "$_sf")"

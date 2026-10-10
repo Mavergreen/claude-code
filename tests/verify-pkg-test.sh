@@ -17,7 +17,7 @@ mk() {
   : > "$t/share/claude-code/requires"; : > "$t/share/claude-code/settings.json"; : > "$t/share/claude-code/mcp-config.json"
   printf '#!/usr/bin/python\n' > "$t/share/claude-code/computer-use/mcp_server.py"; chmod +x "$t/share/claude-code/computer-use/mcp_server.py"
   : > "$t/share/claude-code/claude-env.sh"
-  for _f in mktemp timeout env; do printf '#!/bin/sh\n' > "$t/libexec/claude-code/shell-bin/$_f"; chmod +x "$t/libexec/claude-code/shell-bin/$_f"; done
+  for _f in mktemp timeout env setsid; do printf '#!/bin/sh\n' > "$t/libexec/claude-code/shell-bin/$_f"; chmod +x "$t/libexec/claude-code/shell-bin/$_f"; done
   : > "$r/Library/Application Support/Mavergreen/claude-code-updater.app/Info.plist"
 }
 comp() { pkgbuild --root "$H/$1" --identifier "$2" --version 1 --install-location / "$H/$3" >/dev/null 2>&1; }
@@ -33,7 +33,7 @@ mk noenvfile; rm "$H/noenvfile/usr/local/mavergreen/claude-code/share/claude-cod
 rc=0; out="$(sh "$VP" "$H/noenvfile.pkg" "$H/dd" 2>&1)" || rc=$?
 h_assert_eq "1" "$rc" "a payload without claude-env.sh fails"
 h_assert_contains "$out" "share/claude-code/claude-env.sh" "the failure names the env file"
-for f in mktemp timeout env; do
+for f in mktemp timeout env setsid; do
   mk "no$f"; rm "$H/no$f/usr/local/mavergreen/claude-code/libexec/claude-code/shell-bin/$f"; build "no$f"
   rc=0; out="$(sh "$VP" "$H/no$f.pkg" "$H/dd" 2>&1)" || rc=$?
   h_assert_eq "1" "$rc" "a payload without shell-bin/$f fails"
