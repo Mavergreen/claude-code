@@ -44,7 +44,7 @@ h_assert_contains "$out" "env:CLAUDE_ENV_FILE=$OURS
 " "the env file is ours"
 h_assert_contains "$out" "env:MAVERGREEN_USER_CLAUDE_ENV_FILE
 " "no user env file is saved when none was inherited"
-h_assert_ok test -d "$HOME/Library/Caches"
+h_assert_eq "yes" "$([ -d "$HOME/Library/Caches" ] && echo yes || echo no)" "after a launch ~/Library/Caches exists, so avxemu can keep its load-time cache (without it every process pays seconds)"
 
 out="$(CLAUDE_ENV_FILE="$H/my env" run x)"
 h_assert_contains "$out" "env:CLAUDE_ENV_FILE=$OURS

@@ -42,7 +42,6 @@ V=$(cc_choose) || { cc_record_intent "$@"; exit 1; }
 P=$(cc_runnable "$V") || { cc_record_intent "$@"; exit 1; }
 cc_record_intent "$@"
 if [ ! -e "$CC_STATE/repick" ]; then cc_prune "$(cc_entry_version "$P")" "$V" || :; fi
-mkdir -p "$HOME/Library/Caches" 2>/dev/null || :
 
 cc_setup_env
 
