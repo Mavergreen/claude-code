@@ -68,8 +68,12 @@ main() {
   done
 
   if [ -n "$plan" ]; then
-    note "installing needs an administrator's password"
-    sudo -v || die "could not get administrator rights"
+    # platform: sudo -v wants a tty even when every command needs no password (verifypw=all),
+    #       so a passwordless or recently-validated sudo is asked first, non-interactively
+    if ! sudo -n true 2>/dev/null; then
+      note "installing needs an administrator's password"
+      sudo -v || die "could not get administrator rights"
+    fi
     for asset in $plan; do
       note "installing $asset"
       sudo /usr/sbin/installer -pkg "$tmp/$asset" -target / || die "installer failed on $asset"

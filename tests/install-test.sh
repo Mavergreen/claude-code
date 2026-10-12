@@ -14,7 +14,11 @@ export MAVERGREEN_RELEASES MAVERGREEN_INSTALL_ROOT TMPDIR
 
 cat > "$H/bin/sudo" <<'SUDO'
 #!/bin/sh
-if [ "$*" = "-v" ]; then echo "sudo -v" >> "$H/run.log"; exit 0; fi
+if [ "$*" = "-n true" ]; then [ -n "${H_NOPASSWD-}" ] || exit 1; echo "sudo -n true" >> "$H/run.log"; exit 0; fi
+if [ "$*" = "-v" ]; then
+  [ -z "${H_NOPASSWD-}" ] || { echo "sudo -v without a tty" >> "$H/run.log"; exit 1; }
+  echo "sudo -v" >> "$H/run.log"; exit 0
+fi
 if [ "$1" = /usr/sbin/installer ] && [ "$2" = -pkg ] && [ "$4" = -target ] && [ "$5" = / ] && [ $# -eq 5 ]; then
   [ -f "$3" ] || { echo "missing $3" >> "$H/run.log"; exit 1; }
   case "$3" in "$H/tmp/"*) ;; *) echo "outside the temp dir: $3" >> "$H/run.log"; exit 1 ;; esac
@@ -87,6 +91,13 @@ h_assert_eq 0 "$rc" "a fresh install succeeds: $out"
 h_assert_eq "$ALL" "$log" "installs all five, in order, after one sudo -v"
 h_assert_eq "$DONE" "$last" "ends saying to open a new Terminal window, then run claude"
 h_assert_eq "" "$(tmp_left)" "the temp dir is removed after success"
+
+fresh; H_NOPASSWD=1; export H_NOPASSWD; run; unset H_NOPASSWD
+h_assert_eq 0 "$rc" "an administrator whose sudo needs no password installs without a tty: $out"
+h_assert_eq "sudo -n true
+${ALL#sudo -v
+}" "$log" "passwordless sudo installs all five without sudo -v, which wants a tty even then"
+case "$out" in *"needs an administrator's password"*) h_assert_eq "no password note" "$out" "passwordless sudo is not told it needs a password" ;; esac
 
 fresh; installed recaulk 20261006.1; installed icu 78.2-mavericks.3; run
 h_assert_eq 0 "$rc" "an update succeeds: $out"
