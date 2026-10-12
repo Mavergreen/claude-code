@@ -172,11 +172,18 @@ check6() {
   # platform: claude mcp list never shows servers given by --mcp-config, as the launcher gives this one;
   #           a session's init event lists every server it connected, with its status
   _out="$(to 300 env HOME="$REAL_HOME" "$CLAUDE" -p 'reply with OK' --output-format stream-json --verbose 2>/dev/null)"
+  _rc=$?
   _st="$(printf '%s\n' "$_out" | /usr/bin/perl -MJSON::PP -ne '
     my $j = eval { decode_json($_) } or next;
     next unless ($j->{type} // "") eq "system" && ($j->{subtype} // "") eq "init";
     print "$_->{status}\n" for grep { $_->{name} eq "computer-use-mavericks" } @{$j->{mcp_servers} || []};')"
-  [ "$_st" = connected ] && pass $_n "$_name" || fail $_n "$_name" "the session's init event says '${_st:-nothing}' for computer-use-mavericks"
+  [ "$_st" = connected ] && { pass $_n "$_name"; return; }
+  fail $_n "$_name" "the session's init event says '${_st:-nothing}' for computer-use-mavericks (exit $_rc)"
+  echo "--- the server's own log (last 40 lines)"
+  tail -n 40 "$REAL_HOME/.cache/claude-mavericks/cu.log" 2>&1
+  echo "--- Claude Code's newest log of the server (last 40 lines)"
+  _ml="$(ls -t "$REAL_HOME"/Library/Caches/claude-cli-nodejs/*/mcp-logs-computer-use-mavericks/* 2>/dev/null | head -n 1)"
+  [ -n "$_ml" ] && tail -n 40 "$_ml" || echo "(none)"
 }
 
 check7() {
