@@ -147,8 +147,11 @@ check5() {
   _n=5; _name="claude -p returns OK"
   real_account $_n "$_name" || return
   [ -n "${ANTHROPIC_API_KEY-}" ] || { skip $_n "$_name" "ANTHROPIC_API_KEY is not set"; return; }
-  _out="$(to 300 env HOME="$REAL_HOME" "$CLAUDE" -p 'reply with OK' 2>&1)"
-  [ "$(printf '%s' "$_out" | tr -d '[:space:]')" = OK ] && pass $_n "$_name" || fail $_n "$_name" "printed '$_out'"
+  _ef="$(mktemp "${TMPDIR:-/tmp}/cc-e2e.XXXXXX")" || { fail $_n "$_name" "no temp file"; return; }
+  HOMES="$HOMES $_ef"
+  # platform: stdout is claude -p's answer; stderr carries the launcher's notes, such as a first download
+  _out="$(to 300 env HOME="$REAL_HOME" "$CLAUDE" -p 'reply with OK' 2>"$_ef")"
+  [ "$(printf '%s' "$_out" | tr -d '[:space:]')" = OK ] && pass $_n "$_name" || fail $_n "$_name" "printed '$_out', stderr '$(cat "$_ef")'"
 }
 
 check6() {
