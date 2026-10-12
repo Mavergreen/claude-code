@@ -155,13 +155,16 @@ check5() {
 }
 
 check6() {
-  _n=6; _name="mcp list shows computer-use-mavericks connected"
+  _n=6; _name="computer-use-mavericks connects"
   real_account $_n "$_name" || return
-  _out="$(to 300 env HOME="$REAL_HOME" "$CLAUDE" mcp list 2>&1)"
-  case "$(printf '%s\n' "$_out" | grep 'computer-use-mavericks')" in
-    *Connected*) pass $_n "$_name" ;;
-    *) fail $_n "$_name" "mcp list printed '$_out'" ;;
-  esac
+  # platform: claude mcp list never shows servers given by --mcp-config, as the launcher gives this one;
+  #           a session's init event lists every server it connected, with its status
+  _out="$(to 300 env HOME="$REAL_HOME" "$CLAUDE" -p 'reply with OK' --output-format stream-json --verbose 2>/dev/null)"
+  _st="$(printf '%s\n' "$_out" | /usr/bin/perl -MJSON::PP -ne '
+    my $j = eval { decode_json($_) } or next;
+    next unless ($j->{type} // "") eq "system" && ($j->{subtype} // "") eq "init";
+    print "$_->{status}\n" for grep { $_->{name} eq "computer-use-mavericks" } @{$j->{mcp_servers} || []};')"
+  [ "$_st" = connected ] && pass $_n "$_name" || fail $_n "$_name" "the session's init event says '${_st:-nothing}' for computer-use-mavericks"
 }
 
 check7() {
