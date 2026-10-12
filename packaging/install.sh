@@ -68,6 +68,15 @@ main() {
   done
 
   if [ -n "$plan" ]; then
+    # spec: packaging/postinstall-hook.sh removes Mavericks Forever's claude and rg as it installs, so a
+    #       claude still running from it loses them now, not at the next launch
+    case " $plan " in
+      *" claude-code-"*)
+        if [ -d "$HOME/.local/share/claude-mavericks" ] || grep -q '^MF_GEN=' "$root/usr/local/bin/claude" 2>/dev/null; then
+          note "Mavericks Forever is installed here. Quit every running claude now: installing removes files it uses."
+        fi
+        ;;
+    esac
     # platform: sudo -v wants a tty even when every command needs no password (verifypw=all),
     #       so a passwordless or recently-validated sudo is asked first, non-interactively
     if ! sudo -n true 2>/dev/null; then

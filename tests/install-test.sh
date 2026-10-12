@@ -99,6 +99,21 @@ ${ALL#sudo -v
 }" "$log" "passwordless sudo installs all five without sudo -v, which wants a tty even then"
 case "$out" in *"needs an administrator's password"*) h_assert_eq "no password note" "$out" "passwordless sudo is not told it needs a password" ;; esac
 
+QUIT="Claude Code for Mavericks: Mavericks Forever is installed here. Quit every running claude now: installing removes files it uses."
+fresh; run
+case "$out" in *"Quit every running claude"*) h_assert_eq "no quit note" "$out" "without Mavericks Forever, no note to quit claude" ;; esac
+fresh; mkdir -p "$HOME/.local/share/claude-mavericks"; run
+h_assert_eq 0 "$rc" "an install over Mavericks Forever succeeds: $out"
+_before="$(printf '%s\n' "$out" | sed -n '/installing avxemu/q;p')"
+h_assert_contains "$_before" "$QUIT" "Mavericks Forever in this user's home: says to quit claude before installing anything"
+rm -rf "$HOME/.local/share/claude-mavericks"
+fresh; mkdir -p "$MAVERGREEN_INSTALL_ROOT/usr/local/bin"; printf '#!/bin/sh\nMF_GEN=3\n' > "$MAVERGREEN_INSTALL_ROOT/usr/local/bin/claude"; run
+_before="$(printf '%s\n' "$out" | sed -n '/installing avxemu/q;p')"
+h_assert_contains "$_before" "$QUIT" "Mavericks Forever's /usr/local/bin/claude, which other users run too: says to quit claude before installing"
+installed claude-code 20261007.1; : > "$H/run.log"; run
+case "$out" in *"Quit every running claude"*) h_assert_eq "no quit note" "$out" "with Claude Code for Mavericks up to date, nothing is removed, so no note" ;; esac
+rm -rf "$MAVERGREEN_INSTALL_ROOT/usr/local/bin"
+
 fresh; installed recaulk 20261006.1; installed icu 78.2-mavericks.3; run
 h_assert_eq 0 "$rc" "an update succeeds: $out"
 h_assert_eq "sudo -v
