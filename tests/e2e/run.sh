@@ -57,7 +57,11 @@ to() {
     defined $pid or die "fork: $!\n";
     if (!$pid) { setpgrp(0, 0); exec @ARGV or die "exec $ARGV[0]: $!\n"; }
     my $end = sub { kill "TERM", -$pid; sleep 5; kill "KILL", -$pid; waitpid($pid, 0); exit $_[0] };
-    $SIG{ALRM} = sub { $end->(124) };
+    $SIG{ALRM} = sub {
+      print STDERR "to: the ${s}s limit ran out on process group $pid; this user\x27s processes:\n",
+        `/bin/ps -x -o pid,ppid,pgid,stat,etime,command`;
+      $end->(124);
+    };
     $SIG{$_} = sub { $end->(130) } for qw(INT TERM HUP);
     alarm $s;
     waitpid($pid, 0);
@@ -171,7 +175,10 @@ check6() {
   real_account $_n "$_name" || return
   # platform: claude mcp list never shows servers given by --mcp-config, as the launcher gives this one;
   #           a session's init event lists every server it connected, with its status
-  _out="$(to 300 env HOME="$REAL_HOME" "$CLAUDE" -p 'reply with OK' --output-format stream-json --verbose 2>/dev/null)"
+  new_home || { fail $_n "$_name" "no temp dir"; return; }
+  _d="$NEWHOME"
+  _out="$(to 300 env HOME="$REAL_HOME" "$CLAUDE" -p 'reply with OK' --output-format stream-json --verbose \
+    --debug-file "$_d/debug.log" 2>"$_d/stderr")"
   _rc=$?
   _st="$(printf '%s\n' "$_out" | /usr/bin/perl -MJSON::PP -ne '
     my $j = eval { decode_json($_) } or next;
@@ -179,6 +186,12 @@ check6() {
     print "$_->{status}\n" for grep { $_->{name} eq "computer-use-mavericks" } @{$j->{mcp_servers} || []};')"
   [ "$_st" = connected ] && { pass $_n "$_name"; return; }
   fail $_n "$_name" "the session's init event says '${_st:-nothing}' for computer-use-mavericks (exit $_rc)"
+  echo "--- the session's stdout (first 5 lines, cut)"
+  printf '%s\n' "$_out" | head -n 5 | cut -c1-300
+  echo "--- its stderr, with the time limit's process list (last 60 lines)"
+  tail -n 60 "$_d/stderr"
+  echo "--- its debug log (last 60 lines)"
+  tail -n 60 "$_d/debug.log" 2>&1
   echo "--- the server's own log (last 40 lines)"
   tail -n 40 "$REAL_HOME/.cache/claude-mavericks/cu.log" 2>&1
   echo "--- Claude Code's newest log of the server (last 40 lines)"
