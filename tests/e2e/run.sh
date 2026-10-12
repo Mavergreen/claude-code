@@ -44,13 +44,25 @@ ccrun() {
       set -- "$_crv=$_crval" "$@"
     fi
   done
-  env -i HOME="$_crh" PATH=/usr/bin:/bin:/usr/sbin:/sbin TMPDIR="${TMPDIR:-/tmp}" \
-    perl -e 'alarm shift; exec @ARGV' "$_crs" env "$@"
+  to "$_crs" env -i HOME="$_crh" PATH=/usr/bin:/bin:/usr/sbin:/sbin TMPDIR="${TMPDIR:-/tmp}" "$@"
 }
 
+# platform: Claude Code catches SIGALRM to run its exit handlers, so a bare alarm cannot end a
+#           claude that hangs; the command runs in its own process group, all of which is killed
 to() {
   _secs="$1"; shift
-  perl -e 'alarm shift; exec @ARGV' "$_secs" "$@"
+  /usr/bin/perl -e '
+    my $s = shift;
+    my $pid = fork;
+    defined $pid or die "fork: $!\n";
+    if (!$pid) { setpgrp(0, 0); exec @ARGV or die "exec $ARGV[0]: $!\n"; }
+    my $end = sub { kill "TERM", -$pid; sleep 5; kill "KILL", -$pid; waitpid($pid, 0); exit $_[0] };
+    $SIG{ALRM} = sub { $end->(124) };
+    $SIG{$_} = sub { $end->(130) } for qw(INT TERM HUP);
+    alarm $s;
+    waitpid($pid, 0);
+    exit($? & 127 ? 128 + ($? & 127) : $? >> 8);
+  ' "$_secs" "$@"
 }
 
 pass() { echo "PASS $1 $2"; }
