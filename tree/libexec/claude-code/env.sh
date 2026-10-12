@@ -5,8 +5,9 @@ cc_setup_env() {
   JSC_numberOfGCMarkers=1
   DISABLE_INSTALLATION_CHECKS=1
   export JSC_numberOfGCMarkers DISABLE_INSTALLATION_CHECKS
+  # platform: claude update warns ~/.local/bin is not in PATH unless an entry is spelled as HOME spells
+  #           it; through a symlinked HOME (/tmp vs /private/tmp) the physical spelling does not count
   _cc_lb="$HOME/.local/bin"
-  _cc_lp="$(CDPATH= cd -P "$_cc_lb" 2>/dev/null && pwd -P)" || _cc_lp=""
   _cc_cb="$CC_TREE/libexec/claude-code/claude-bin"
   _cc_have=0
   _cc_rest=""
@@ -14,12 +15,12 @@ cc_setup_env() {
   case "$-" in *f*) _cc_nf=1 ;; *) _cc_nf=0; set -f ;; esac
   IFS=:
   for _cc_pe in $PATH; do
-    if [ "$_cc_pe" = "$_cc_lb" ] || { [ -n "$_cc_lp" ] && [ "$_cc_pe" = "$_cc_lp" ]; }; then _cc_have=1; fi
+    [ "$_cc_pe" != "$_cc_lb" ] || _cc_have=1
     [ "$_cc_pe" = "$_cc_cb" ] || _cc_rest="${_cc_rest:+$_cc_rest:}$_cc_pe"
   done
   IFS="$_cc_oifs"
   [ "$_cc_nf" -eq 1 ] || set +f
-  [ "$_cc_have" -eq 1 ] || _cc_rest="${_cc_rest:+$_cc_rest:}${_cc_lp:-$_cc_lb}"
+  [ "$_cc_have" -eq 1 ] || _cc_rest="${_cc_rest:+$_cc_rest:}$_cc_lb"
   PATH="$_cc_cb:$_cc_rest"
   export PATH
   _cc_ours="$CC_TREE/share/claude-code/claude-env.sh"
