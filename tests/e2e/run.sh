@@ -160,14 +160,22 @@ real_account() {
 }
 
 check5() {
-  _n=5; _name="claude -p returns OK"
+  _n=5; _name="claude -p reaches the API, which rejects a deliberately invalid key"
   real_account $_n "$_name" || return
-  [ -n "${ANTHROPIC_API_KEY-}" ] || { skip $_n "$_name" "ANTHROPIC_API_KEY is not set"; return; }
-  _ef="$(mktemp "${TMPDIR:-/tmp}/cc-e2e.XXXXXX")" || { fail $_n "$_name" "no temp file"; return; }
-  HOMES="$HOMES $_ef"
+  new_home || { fail $_n "$_name" "no temp dir"; return; }
+  _d="$NEWHOME"
   # platform: stdout is claude -p's answer; stderr carries the launcher's notes, such as a first download
-  _out="$(to 300 env HOME="$REAL_HOME" "$CLAUDE" -p 'reply with OK' 2>"$_ef")"
-  [ "$(printf '%s' "$_out" | tr -d '[:space:]')" = OK ] && pass $_n "$_name" || fail $_n "$_name" "printed '$_out', stderr '$(cat "$_ef")'"
+  _out="$(to 300 env HOME="$REAL_HOME" ANTHROPIC_API_KEY=sk-ant-api03-mavergreen-e2e-deliberately-invalid \
+    "$CLAUDE" -p 'reply with OK' --debug-file "$_d/debug.log" 2>"$_d/stderr")"
+  _rc=$?
+  if [ "$_rc" -ne 0 ] && grep -q '"type":"authentication_error"' "$_d/debug.log" 2>/dev/null \
+     && grep -q '"request_id":"req_' "$_d/debug.log" 2>/dev/null; then
+    pass $_n "$_name"
+    return
+  fi
+  fail $_n "$_name" "exit $_rc, printed '$_out', stderr '$(cat "$_d/stderr")'"
+  echo "--- its debug log (last 40 lines)"
+  tail -n 40 "$_d/debug.log" 2>&1
 }
 
 check6() {
