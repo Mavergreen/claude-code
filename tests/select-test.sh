@@ -179,3 +179,4 @@ h_assert_eq "2.1.207" "$(cc_choose)" "2.1.207 itself is honoured"
 E2E_OLDER="$(sed -n 's/^OLDER="\${CC_E2E_OLDER_VERSION:-\(.*\)}"$/\1/p' "$H_REPO/tests/e2e/run.sh")"
 h_assert_ok cc_is_version "$E2E_OLDER"
 h_assert_fails cc_predates_launcher "$E2E_OLDER"
+h_done

@@ -184,3 +184,4 @@ printf '# a local edit\n' >> "$R/tree/bin/claude"
 rc=0; out="$(bp 2>&1)" || rc=$?
 h_assert_eq 0 "$rc" "a tree/ with uncommitted changes still builds"
 h_assert_contains "$out" "build-pkg: tree/ has uncommitted changes, which this package leaves out (it stages tree/ as committed at HEAD)" "and warns that they are not in the package"
+h_done

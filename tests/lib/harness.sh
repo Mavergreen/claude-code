@@ -1,6 +1,7 @@
 #!/bin/sh
 # platform: macOS-only -- the tests drive the launcher, which targets Mac OS X 10.9's sh and tools
 #   usage: . "$(dirname "$0")/lib/harness.sh"; h_setup; ... h_assert_* ...  h_setup installs the EXIT trap; h_teardown removes $H and fails the test if any assert failed.
+#          A test's last line is h_done: a test that exits 0 without reaching it died partway, and fails.
 #          asserts must not run inside $(...) or a pipeline: their failure count would be lost.
 
 H_FAILS=0
@@ -9,6 +10,7 @@ H_ORIG_HOME="${HOME-}"
 H_ORIG_PATH="$PATH"
 
 h_setup() {
+  H_DONE=0
   trap h_teardown EXIT
   unset XDG_DATA_HOME CLAUDE_CODE_CDN CLAUDE_CONFIG_DIR DISABLE_AUTOUPDATER CC_SBIN CC_PYTHON CC_LSOF
   H="$(mktemp -d "${TMPDIR:-/tmp}/cc test.XXXXXX")"
@@ -42,11 +44,21 @@ SYS
   export HOME PATH CLAUDE_CODE_CDN CC_MANAGED_SETTINGS
 }
 
+h_done() { H_DONE=1; }
+
 h_teardown() {
+  _h_rc="${1:-$?}"
   [ -n "${H-}" ] && rm -rf "$H"
   HOME="$H_ORIG_HOME"
   PATH="$H_ORIG_PATH"
   export HOME PATH
+  [ "$_h_rc" -eq 0 ] || exit "$_h_rc"
+  # platform: bash 3.2, 10.9's /bin/sh, hands the EXIT trap a status of 0 when an unset variable under
+  #           set -u kills the script, so only the missing h_done shows that the test died
+  if [ "${H_DONE:-0}" -ne 1 ]; then
+    echo "FAIL: the test exited before h_done, so it died partway (an unset variable, under set -u?)" >&2
+    exit 1
+  fi
   [ "${H_FAILS:-0}" -eq 0 ] || exit 1
 }
 

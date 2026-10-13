@@ -47,3 +47,4 @@ h_assert_eq 1 "$rc" "a payload cpio cannot read fails"
 h_assert_contains "$err" "extract-component: cannot unpack component com.example-comp: cpio: " "and says why, in cpio's own words"
 rc=0; err="$(sh "$X" "$H/c.pkg" com.example-comp "$H/dest2" 2>&1)" || rc=$?
 h_assert_eq "" "$err" "a payload that unpacks prints nothing, not cpio's block count"
+h_done

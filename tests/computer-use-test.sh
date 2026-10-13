@@ -48,3 +48,4 @@ if [ -n "$P27" ]; then
 else
   echo "SKIP: no python2.7, so mcp_server.py and cu_actions.py are not compiled" >&2
 fi
+h_done

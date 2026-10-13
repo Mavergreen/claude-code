@@ -263,3 +263,4 @@ same sed "" "ONE${NL}rc=0" "--expression=SCRIPT FILE" --expression=s/one/ONE/ sf
 same sed "$L5" "2${NL}rc=0" "-n Np passes through" -n 2p
 same sed "aa${NL}" "X${NL}rc=0" "-E passes through" -E 's/(a)+/X/'
 same sed "a,+1${NL}" "b,+1${NL}rc=0" "a ,+ inside a substitution is left alone" 's/a,+1/b,+1/'
+h_done

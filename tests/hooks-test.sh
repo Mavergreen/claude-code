@@ -214,3 +214,4 @@ h_assert_contains "$out" "~/Library/Application Support/dev.mavergreen.claude-co
 h_assert_contains "$out" "~/.local/bin/claude" "and the per-user link"
 h_assert_contains "$out" "rm -rf ~/Library/Caches/dev.mavergreen.claude-code ~/Library/Application\\ Support/dev.mavergreen.claude-code" "it says how to remove them"
 h_assert_contains "$out" '[ "$(readlink ~/.local/bin/claude)" = /usr/local/mavergreen/bin/claude ] && rm -f ~/.local/bin/claude' "including the link, only when it is the launcher's"
+h_done
