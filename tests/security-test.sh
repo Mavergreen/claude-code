@@ -57,3 +57,4 @@ rc=0; err="$("$SEC" add-generic-password -a acct -s svc -X 7g </dev/null 2>&1)" 
 h_assert_eq "1" "$rc" "-X with bad hex fails"
 h_assert_contains "$err" "-X" "the failure names -X"
 h_assert_fails test -e "$H/sec.argv"
+h_done

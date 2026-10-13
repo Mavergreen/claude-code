@@ -296,3 +296,4 @@ out="$(nohold x 2>&1 || echo "exit:$?")"
 h_assert_contains "$out" "Claude Code 2.1.401 is not published at $CLAUDE_CODE_CDN; running the latest, 2.1.289" "a launch whose version the CDN does not publish says so"
 runs "$out" 2.1.289 "and runs the latest instead of dying"
 h_assert_ok test -e "$V/2.1.401"
+h_done

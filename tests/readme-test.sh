@@ -28,3 +28,4 @@ h_assert_contains "$USE" "AVX" "How to use names the CPU requirement"
 BACK="$(section "Go back to Mavericks Forever")"
 h_assert_ok in_order "$BACK" "sudo mavergreen uninstall claude-code" "mavericksforever.com/claude/install.sh"
 h_assert_contains "$BACK" '[ "$(readlink ~/.local/bin/claude)" = /usr/local/mavergreen/bin/claude ] && rm -f ~/.local/bin/claude' "Going back removes the link only when it is the launcher's"
+h_done

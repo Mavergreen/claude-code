@@ -240,3 +240,4 @@ _wp="$(grep -n -F 'sh packaging/verify-pkg.sh' "$W" | head -n 1 | cut -d: -f1)"
 _wn="$(grep -n -F -- '- name: Release notes' "$W" | head -n 1 | cut -d: -f1)"
 h_assert_ok test "${_wp:-99}" -lt "${_wc:-0}"
 h_assert_ok test "${_wc:-99}" -lt "${_wn:-0}"
+h_done

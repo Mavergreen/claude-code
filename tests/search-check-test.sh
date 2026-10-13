@@ -17,3 +17,4 @@ done
 rc=0; err="$(SEARCH_CHECK_RG="$H/bin2/real-rg" SEARCH_CHECK_UGREP=/nonexistent/ugrep sh "$SC" "$H/claude" "$H/out" 2>&1)" || rc=$?
 case "$err" in *"is the binary under test"*) got=refused ;; *) got=accepted ;; esac
 h_assert_eq "accepted" "$got" "a different rg gets past the check (the run then stops at the missing ugrep): $err"
+h_done

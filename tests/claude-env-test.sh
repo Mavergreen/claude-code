@@ -440,3 +440,4 @@ fi
 h_assert_eq "5000" "$(A=a "$SB/env" -u A sh -c 'echo $#' sh $many)" "env -u passes 5000 arguments through"
 # shellcheck disable=SC2086
 h_assert_eq "unset 5000" "$(A=a "$SB/env" -i -u A sh -c 'echo ${A-unset} $#' sh $many)" "env -i -u passes 5000 arguments through"
+h_done

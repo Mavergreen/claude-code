@@ -31,3 +31,4 @@ for py in $pythons; do
   if [ -n "$bg" ] && kill -0 "$bg" 2>/dev/null; then alive=yes; kill "$bg" 2>/dev/null || :; fi
   h_assert_eq "no" "$alive" "[$py] the harness kills the command's whole session, not just the command"
 done
+h_done

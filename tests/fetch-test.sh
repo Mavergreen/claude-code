@@ -158,3 +158,4 @@ rc=0; out="$(cc_fetch 2.1.296 2>&1)" || rc=$?
 h_online
 h_assert_eq "1" "$rc" "cc_fetch fails when the CDN cannot be reached"
 h_assert_contains "$out" "could not read the checksum for Claude Code 2.1.296 from $CC_CDN: curl: (7) Failed to connect" "and the message carries curl's own error"
+h_done

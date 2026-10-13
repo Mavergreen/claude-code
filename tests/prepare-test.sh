@@ -104,3 +104,4 @@ print(d["permissions"]["allow"][0])' "$S")"
   h_assert_eq "command /usr/local/mavergreen/claude-code/libexec/claude-code/prepare
 mcp__computer-use-mavericks" "$hooks" "settings.json runs prepare, by its installed path, when a session ends, and still allows computer use"
 fi
+h_done

@@ -110,7 +110,7 @@ mkdir "$H/hold"
 cp /bin/sleep "$H/hold/claude"
 ( exec 3<"$CC_CACHE/2.1.286-$ID/claude"; exec "$H/hold/claude" 30 ) &
 hp=$!
-trap 'kill "$hp" 2>/dev/null; h_teardown' EXIT
+trap '_p_rc=$?; kill "$hp" 2>/dev/null; h_teardown "$_p_rc"' EXIT
 n=0
 until case "$(ps -p "$hp" -o comm= 2>/dev/null)" in claude|*/claude) true ;; *) false ;; esac || [ "$n" -ge 30 ]; do sleep 1; n=$((n+1)); done
 h_assert_ok cc_prune 2.1.289
@@ -143,4 +143,4 @@ h_assert_eq "2.1.288-$ID 2.1.289-$ID " "$(clist)" "an lsof that exits 1 with no 
 h_assert_eq "-a -c claude -w -t $CC_CACHE/2.1.286-$ID/claude" "$(cat "$H/lsof.log")" "lsof is asked with -w, so its warnings cannot read as a holder"
 unset CC_LSOF
 
-h_teardown
+h_done

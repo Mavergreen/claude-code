@@ -227,4 +227,4 @@ out="$(cc_takeover 2>&1)"
 h_assert_contains "$out" "~/.cache/claude-mavericks" "once unstuck, the takeover removes and lists the path"
 h_assert_ok test -f "$CC_STATE/took-over"
 h_assert_eq "" "$(cc_takeover 2>&1)" "and is silent after"
-h_teardown
+h_done

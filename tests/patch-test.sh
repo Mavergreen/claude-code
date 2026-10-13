@@ -194,3 +194,4 @@ h_offline
 ERR="$( (cc_runnable 2.1.400 2>&1 >/dev/null) || true)"
 h_assert_contains "$ERR" "cannot run Claude Code 2.1.400: could not verify Claude Code 2.1.400 while offline" "an unreachable CDN is still offline, not unpublished"
 h_online
+h_done
