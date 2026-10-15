@@ -170,6 +170,7 @@ git -C "$R" add -A
 git -C "$R" -c user.name=test -c user.email=test@example.invalid -c commit.gpgsign=false -c core.hooksPath=/dev/null commit -qm fixture
 mkdir -p "$H/sy" "$H/b/claude-code-updater.app"
 cp "$H/shipyard/product-name.sh" "$H/sy/"
+cp "$SHIPYARD_SCRIPTS/mavericks_fetch.sh" "$H/sy/"
 printf '#!/bin/sh\nprintf "%%s\\n" "$*" > "$H/stage.log"\n' > "$H/sy/stage_product.sh"
 printf '#!/bin/sh\n' > "$H/sy/build_component_pkg.sh"
 printf '#!/bin/sh\nwhile [ $# -gt 0 ]; do [ "$1" != --out ] || : > "$2"; shift; done\n' > "$H/sy/set_install_floor.sh"
