@@ -23,6 +23,7 @@ not shipped in this package. Claude Code is fetched on the user's Mac, verified,
 ## Conformance deviations
 
 - scheme: Claude Code for Mavericks is its own upstream (no one else's release to repackage), so it versions itself by date as YYYYMMDD.N with no -mavericks.N axis
+- unpinned:tests/readme-test.sh: it asserts that the README gives the end-user install one-liner, which installs the newest release by design; the test fetches nothing. Reconsider if the README's install command ever pins a version.
 
 ## Upstream release notes
 
