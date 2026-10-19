@@ -32,7 +32,7 @@ sh "$REPO/packaging/render-recipe.sh" "$T/libexec/drydock-macho-rewrite" "$T/sha
 cp "$REPO/LICENSE" "$REPO/README.md" "$T/share/doc/claude-code/"
 find "$ROOT" -name '._*' -delete
 set --
-while read -r short _url; do set -- "$@" --requires "$short"; done < "$T/share/claude-code/requires"
+while read -r short _url min; do set -- "$@" --requires "$short${min:+>=$min}"; done < "$T/share/claude-code/requires"
 sh "$SHIPYARD/stage_product.sh" --stage "$ROOT" --product claude-code --name "Mavericks Claude Code" \
   --version "$V" "$@" \
   --preinstall-hook "$REPO/packaging/preinstall-hook.sh" --postinstall-hook "$REPO/packaging/postinstall-hook.sh" \

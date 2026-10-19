@@ -46,7 +46,7 @@ h_assert_eq "4" "$(wc -l < "$H/out1/requires" | tr -d ' ')" "requires has four l
 h_assert_eq "$(ls -l "$H/out1/recipe" | cut -c1-10)" "$(ls -l "$H/out1/requires" | cut -c1-10)" "requires gets the same permissions as recipe, so every user can read it once installed"
 h_assert_eq "avxemu https://github.com/Mavergreen/avxemu/releases/latest" "$(sed -n 1p "$H/out1/requires")" "avxemu line"
 h_assert_eq "recaulk https://github.com/Mavergreen/recaulk/releases/latest" "$(sed -n 2p "$H/out1/requires")" "recaulk line"
-h_assert_eq "libcxx22 https://github.com/Mavergreen/clang-22/releases/latest" "$(sed -n 3p "$H/out1/requires")" "libcxx22 line"
+h_assert_eq "libcxx22 https://github.com/Mavergreen/clang-22/releases/latest 22.1.8-mavericks.5" "$(sed -n 3p "$H/out1/requires")" "libcxx22 line"
 h_assert_eq "icu https://github.com/Mavergreen/icu/releases/latest" "$(sed -n 4p "$H/out1/requires")" "icu line"
 rc=0; out="$(render "$H/dd1" 2>&1)" || rc=$?
 h_assert_eq "2" "$rc" "wrong argument count exits 2"
@@ -164,7 +164,7 @@ cp "$H_REPO/build/msc.sh" "$R/build/"
 cp "$H_REPO/components/drydock/version" "$R/components/drydock/"
 printf 'license\n' > "$R/LICENSE"
 printf 'readme\n' > "$R/README.md"
-sed 's/^for short in avxemu recaulk libcxx22 icu; do$/for short in avxemu recaulk libcxx22; do/' "$PK/render-recipe.sh" > "$R/packaging/render-recipe.sh"
+sed '/^for entry in /s/ icu; do$/; do/' "$PK/render-recipe.sh" > "$R/packaging/render-recipe.sh"
 git -C "$R" init -q
 git -C "$R" add -A
 git -C "$R" -c user.name=test -c user.email=test@example.invalid -c commit.gpgsign=false -c core.hooksPath=/dev/null commit -qm fixture
@@ -178,7 +178,7 @@ bp() { SHIPYARD_SCRIPTS="$H/sy" sh "$R/packaging/build-pkg.sh" "$H/b" 20261010.1
 rc=0; out="$(bp 2>&1)" || rc=$?
 h_assert_eq 0 "$rc" "build-pkg runs with shipyard's scripts stubbed: $out"
 h_assert_ok test -f "$H/pkgout/cc.pkg"
-h_assert_contains "$(cat "$H/stage.log")" "--version 20261010.1 --requires avxemu --requires recaulk --requires libcxx22 --preinstall-hook " "build-pkg requires exactly the products render-recipe lists, in its order"
+h_assert_contains "$(cat "$H/stage.log")" "--version 20261010.1 --requires avxemu --requires recaulk --requires libcxx22>=22.1.8-mavericks.5 --preinstall-hook " "build-pkg requires exactly the products render-recipe lists, in its order"
 case "$out" in *uncommitted*) h_assert_eq "no warning" "$out" "a committed tree/ draws no warning" ;; esac
 printf '# a local edit\n' >> "$R/tree/bin/claude"
 : > "$R/tree/untracked"

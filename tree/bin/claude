@@ -30,7 +30,7 @@ case " $_cc_cpu " in
 esac
 
 [ -f "$CC_TREE/share/claude-code/requires" ] || cc_die "missing $CC_TREE/share/claude-code/requires"
-while read -r _cc_short _cc_url || [ -n "$_cc_short" ]; do
+while read -r _cc_short _cc_url _cc_min || [ -n "$_cc_short" ]; do
   [ -n "$_cc_short" ] || continue
   [ -f "$CC_MG/$_cc_short/mavergreen.plist" ] || cc_die "$_cc_short is not installed; get it from $_cc_url"
 done < "$CC_TREE/share/claude-code/requires"

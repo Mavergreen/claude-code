@@ -2,7 +2,8 @@
 # platform: host-agnostic
 #   usage: render-recipe.sh DRYDOCK-BINARY OUTDIR
 #          writes OUTDIR/recipe, OUTDIR/recipe-id and OUTDIR/requires; each requires line is a
-#          product's short name and its latest-release URL, the repo coming from shipyard's product-name.sh.
+#          product's short name, its latest-release URL (the repo from shipyard's product-name.sh) and,
+#          when it has one, its minimum version.
 set -eu
 [ $# -eq 2 ] || { echo "usage: render-recipe.sh DRYDOCK-BINARY OUTDIR" >&2; exit 2; }
 bin="$1"; out="$2"
@@ -13,10 +14,12 @@ here="$(cd "$(dirname "$0")" && pwd)"
 req="$out/.requires.$$"
 trap 'rm -f "$req"' EXIT
 : > "$req"
-for short in avxemu recaulk libcxx22 icu; do
+for entry in avxemu recaulk 'libcxx22>=22.1.8-mavericks.5' icu; do
+  short="${entry%%>=*}"; min=""
+  case "$entry" in *">="*) min=" ${entry#*>=}" ;; esac
   repo="$(sh "$SHIPYARD_SCRIPTS/product-name.sh" repo "$short")"
   [ -n "$repo" ] || { echo "no repo for $short" >&2; exit 1; }
-  printf '%s https://github.com/Mavergreen/%s/releases/latest\n' "$short" "$repo" >> "$req"
+  printf '%s https://github.com/Mavergreen/%s/releases/latest%s\n' "$short" "$repo" "$min" >> "$req"
 done
 mv -f "$req" "$out/requires"
 cp "$here/recipe.in" "$out/recipe"
