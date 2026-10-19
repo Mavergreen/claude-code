@@ -34,13 +34,13 @@ platform() { h_assert_eq "# platform: macOS-only -- $2" "$(sed -n 2p "$SB/$1")" 
 
 platform base64 "Mac OS X 10.9's base64 decodes with -D; its -d means debug, and re-encodes"
 same base64 'hi' "aGk=${NL}rc=0" "encodes"
-same base64 'aGkK' "hi${NL}rc=0" "-d decodes" -d
+same base64 'aGkK' "hi${NL}rc=0" "-d decodes" -d # portability-ok: tests the shim's GNU -d
 same base64 'aGkK' "hi${NL}rc=0" "--decode decodes" --decode
 shim base64 'aGkK' "hi${NL}rc=0" "-D still decodes" -D
-same base64 "aGVsbG8gd29y${NL}bGQK${NL}" "hello world${NL}rc=0" "-d decodes input wrapped across lines" -d
+same base64 "aGVsbG8gd29y${NL}bGQK${NL}" "hello world${NL}rc=0" "-d decodes input wrapped across lines" -d # portability-ok: tests the shim's GNU -d
 printf 'aGkK' > b64
-same base64 '' "hi${NL}rc=0" "-d FILE decodes the file" -d b64
-same base64 'aGkK' "hi${NL}rc=0" "-d - decodes stdin" -d -
+same base64 '' "hi${NL}rc=0" "-d FILE decodes the file" -d b64 # portability-ok: tests the shim's GNU -d
+same base64 'aGkK' "hi${NL}rc=0" "-d - decodes stdin" -d - # portability-ok: tests the shim's GNU -d
 same base64 'abcdefghij' "YWJj${NL}ZGVm${NL}Z2hp${NL}ag==${NL}rc=0" "-w N wraps at N" -w 4
 same base64 'abcdefghij' "YWJj${NL}ZGVm${NL}Z2hp${NL}ag==${NL}rc=0" "--wrap=N wraps at N" --wrap=4
 same base64 'abcdefghijkl' "YWJj${NL}ZGVm${NL}Z2hp${NL}amts${NL}rc=0" "-w N with an exact multiple" -w 4
@@ -48,10 +48,10 @@ same base64 'abcdefghij' "YWJjZGVmZ2hpag==rc=0" "-w 0 does not wrap, or end the 
 same base64 'abcdefghij' "YWJjZGVmZ2hpag==rc=0" "-w0 does not wrap" -w0
 printf 'abcdefghij' > b64w
 same base64 '' "YWJjZGVmZ2hpag==rc=0" "-w 0 FILE encodes the file" -w 0 b64w
-shim base64 '' "base64: nonexistent: No such file or directory${NL}rc=1" "-d with a missing file fails" -d nonexistent
-shim base64 '' "hi${NL}rc=0" "-d -i FILE decodes, with 10.9's -i" -d -i b64
-shim base64 'aGkK' "rc=0" "-d -o FILE decodes into FILE, with 10.9's -o" -d -o b64out
-h_assert_eq "hi" "$(cat b64out)" "base64 shim: -d -o FILE wrote FILE"
+shim base64 '' "base64: nonexistent: No such file or directory${NL}rc=1" "-d with a missing file fails" -d nonexistent # portability-ok: tests the shim's GNU -d
+shim base64 '' "hi${NL}rc=0" "-d -i FILE decodes, with 10.9's -i" -d -i b64 # portability-ok: tests the shim's GNU -d
+shim base64 'aGkK' "rc=0" "-d -o FILE decodes into FILE, with 10.9's -o" -d -o b64out # portability-ok: tests the shim's GNU -d
+h_assert_eq "hi" "$(cat b64out)" "base64 shim: -d -o FILE wrote FILE" # portability-ok: tests the shim's GNU -d
 
 platform paste "Mac OS X 10.9's paste needs a file operand, where GNU reads stdin"
 same paste "a${NL}b${NL}c${NL}" "a,b,c${NL}rc=0" "-sd, with no file reads stdin" -sd,
